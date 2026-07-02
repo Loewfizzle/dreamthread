@@ -10,16 +10,17 @@ interface DreamCardProps {
 }
 
 export default function DreamCard({ dream, onClick }: DreamCardProps) {
-  const date = new Date(dream.dream_date);
+  const date = dream.dream_date ? new Date(dream.dream_date) : new Date();
   const formattedDate = date.toLocaleDateString('en-US', { 
     month: 'short', 
     day: 'numeric',
     year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
   });
 
-  const excerpt = dream.content.length > 140 
-    ? dream.content.slice(0, 137).trim() + '…' 
-    : dream.content;
+  const content = dream.content || '';
+  const excerpt = content.length > 140 
+    ? content.slice(0, 137).trim() + '…' 
+    : content;
 
   const lucidity = Math.max(1, Math.min(5, dream.lucidity || 3));
 
@@ -34,7 +35,11 @@ export default function DreamCard({ dream, onClick }: DreamCardProps) {
           <div className="flex items-center gap-2 text-[11px] font-medium text-text-400 tracking-[0.5px] mb-1.5">
             {formattedDate}
             <span className="inline-block w-px h-2.5 bg-text-500/40" />
-            <span className="tabular-nums">{lucidity}/5</span>
+            {(dream as any).is_lucid ? (
+              <span className="text-accent font-medium">LUCID</span>
+            ) : (
+              <span className="tabular-nums">{lucidity}/5</span>
+            )}
           </div>
           <h3 className="font-semibold text-[18px] tracking-[-0.02em] text-text-50 leading-tight pr-1 line-clamp-2">
             {dream.title || 'Untitled dream'}

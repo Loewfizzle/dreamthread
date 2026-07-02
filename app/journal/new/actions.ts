@@ -68,7 +68,17 @@ export async function createDreamAction(
       is_lucid: isLucid,
     }
 
-    await createDream(dreamData)
+    const { error: insertError } = await supabase
+      .from('dreams')
+      .insert(dreamData)
+
+    if (insertError) {
+      console.error('createDream insert error:', insertError)
+      return {
+        error: 'Failed to save your dream. Please try again.',
+        values: submittedValues,
+      }
+    }
 
     // Success — redirect to journal list
     redirect('/journal')
@@ -160,7 +170,16 @@ export async function updateDreamAction(
       updated_at: new Date().toISOString(),
     }
 
-    await updateDream(id, updates)
+    const { error: updateErr } = await supabase
+      .from('dreams')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (updateErr) {
+      console.error('updateDream update error:', updateErr)
+      return { error: 'Failed to update dream. Please try again.' }
+    }
 
     return { success: true }
   } catch (err) {
@@ -180,7 +199,16 @@ export async function deleteDreamAction(id: string): Promise<{ error?: string; s
       return { error: 'You must be signed in to delete dreams.' }
     }
 
-    await deleteDream(id)
+    const { error: deleteErr } = await supabase
+      .from('dreams')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (deleteErr) {
+      console.error('deleteDream delete error:', deleteErr)
+      return { error: 'Failed to delete dream. Please try again.' }
+    }
 
     return { success: true }
   } catch (err) {

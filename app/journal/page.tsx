@@ -8,7 +8,7 @@ import type { Dream } from '@/lib/dreams';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import { signOut } from '@/lib/supabase';
-import { loadDreams, saveDreams } from '@/lib/dreams';
+import { createClient } from '@/lib/supabase/client';
 
 export default function Journal() {
   const [dreams, setDreams] = useState<Dream[]>([]);
@@ -18,34 +18,45 @@ export default function Journal() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'lucid' | 'recent'>('all');
   const router = useRouter();
 
-  // Load in timeout callback so initial sets aren't direct in effect body
+  // Load dreams from Supabase + localStorage (merged for compatibility)
   useEffect(() => {
     const id = setTimeout(() => {
       setIsLoading(true);
       setLoadError(null);
-      try {
-        const loaded = loadDreams();
-        setDreams(loaded);
-      } catch {
-        setLoadError('We had trouble reaching your journal. The dreams may still be safe locally.');
-        setDreams([]);
-      } finally {
+      (async () => {
+        let combined: Dream[] = [];
+        // Always load local first (for previously stored dreams)
+        try {
+          const { loadDreams } = await import('@/lib/dreams');
+          const local = loadDreams();
+          combined = [...local];
+        } catch {}
+
+        // Then load from Supabase and merge (prefer DB if id overlap, though unlikely)
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from('dreams')
+            .select('*')
+            .order('dream_date', { ascending: false });
+          if (!error && data) {
+            const dbIds = new Set(data.map((d: any) => d.id));
+            const localOnly = combined.filter(d => !dbIds.has(d.id));
+            combined = [...data as any as Dream[], ...localOnly];
+          }
+        } catch (e) {
+          console.warn('Supabase load failed (using local only):', e);
+          if (combined.length === 0) {
+            setLoadError('We had trouble reaching your journal (cloud). Showing local dreams.');
+          }
+        }
+
+        setDreams(combined);
         setIsLoading(false);
-      }
+      })();
     }, 0);
     return () => clearTimeout(id);
   }, []);
-
-  // Persist whenever dreams change (after hydration)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && dreams.length > 0) {
-      try {
-        saveDreams(dreams);
-      } catch {
-        // non-fatal
-      }
-    }
-  }, [dreams]);
 
   const filteredDreams = React.useMemo(() => {
     let result = [...dreams];

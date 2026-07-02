@@ -2,43 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import DreamForm from '@/components/DreamForm';
+import NewDreamForm from './NewDreamForm';
 import BottomNav from '@/components/BottomNav';
-import type { Dream } from '@/lib/dreams';
-import { loadDreams, saveDreams } from '@/lib/dreams';
 
 export default function NewDream() {
-  const router = useRouter();
-
-  function handleSave(dreamData: Partial<Dream> & { id?: string }) {
-    const existing = loadDreams();
-
-    const newDream: Dream = {
-      id: dreamData.id || `d_${Date.now().toString(36)}`,
-      title: dreamData.title || null,
-      content: dreamData.content || '',
-      dream_date: dreamData.dream_date || new Date().toISOString().split('T')[0],
-      tags: dreamData.tags || null,
-      lucidity: dreamData.lucidity,
-      mood: dreamData.mood || null,
-      created_at: new Date().toISOString(),
-      image_url: null,
-      image_generation_count: 0,
-    };
-
-    // If editing an existing (though new page shouldn't, support reuse)
-    const withoutOld = existing.filter(d => d.id !== newDream.id);
-    const updated = [newDream, ...withoutOld];
-
-    saveDreams(updated);
-    router.push('/journal');
-  }
-
-  function handleCancel() {
-    router.push('/journal');
-  }
-
   return (
     <div className="min-h-screen bg-midnight-900">
       {/* Consistent header */}
@@ -57,10 +24,7 @@ export default function NewDream() {
         </div>
 
         <div className="card p-6 sm:p-8">
-          <DreamForm 
-            onSave={handleSave} 
-            onCancel={handleCancel} 
-          />
+          <NewDreamForm />
         </div>
 
         <p className="text-center text-xs text-text-400 mt-8 max-w-[26ch] mx-auto">

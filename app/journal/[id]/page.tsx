@@ -1,57 +1,425 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import DreamView from './DreamView';
+import { useRouter, useParams } from 'next/navigation';
+import DreamForm from '@/components/DreamForm';
 import BottomNav from '@/components/BottomNav';
-import type { Dream } from '@/types/database';
+import type { Dream } from '@/lib/dreams';
+import { loadDreams, saveDreams } from '@/lib/dreams';
+import { createClient } from '@/lib/supabase/client';
+import { generateDreamImageAction } from '../new/actions';
 
-interface DreamDetailProps {
-  params: Promise<{ id: string }>;
-}
+export default function DreamDetail() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const [dream, setDream] = useState<Dream | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [interpretation, setInterpretation] = useState<string | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
-export default async function DreamDetail({ params }: DreamDetailProps) {
-  const { id } = await params;
+  // Load the specific dream - try Supabase first, fallback to localStorage
+  useEffect(() => {
+    const id = params.id;
+    if (!id) {
+      setNotFound(true);
+      return;
+    }
+    const t = setTimeout(() => {
+      (async () => {
+        // Try Supabase
+        try {
+          const supabase = createClient();
+          const { data: dbDream, error } = await supabase
+            .from('dreams')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (!error && dbDream) {
+            setDream(dbDream as any as Dream);
+            return;
+          }
+        } catch (e) {
+          console.warn('Supabase load failed for detail, trying local', e);
+        }
 
-  if (!id) {
-    notFound();
+        // Fallback to local
+        try {
+          const all = loadDreams();
+          const found = all.find(d => d.id === id);
+          if (found) {
+            setDream(found);
+          } else {
+            setNotFound(true);
+          }
+        } catch {
+          setNotFound(true);
+        }
+      })();
+    }, 80);
+    return () => clearTimeout(t);
+  }, [params.id]);
+
+  function updateDream(updated: Dream) {
+    setSaveError(null);
+    try {
+      const all = loadDreams();
+      const newAll = all.map(d => d.id === updated.id ? updated : d);
+      saveDreams(newAll);
+      setDream(updated);
+      setIsEditing(false);
+    } catch {
+      setSaveError('We couldn’t save the changes. Your edits are still here — please try again.');
+    }
   }
 
-  const supabase = await createClient();
-
-  const { data: dream, error } = await supabase
-    .from('dreams')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error || !dream) {
-    notFound();
+  function handleSaveFromForm(data: Partial<Dream>) {
+    if (!dream) return;
+    const updatedDream: Dream = {
+      ...dream,
+      ...data,
+    } as Dream;
+    updateDream(updatedDream);
   }
 
-  const typedDream = dream as Dream;
+  async function deleteDream() {
+    if (!dream || !confirm('Delete this dream forever?')) return;
+    setDeleting(true);
+    setSaveError(null);
+    try {
+      // Try delete from DB too
+      try {
+        const supabase = createClient();
+        await supabase.from('dreams').delete().eq('id', dream.id);
+      } catch {}
+      const all = loadDreams();
+      const filtered = all.filter(d => d.id !== dream.id);
+      saveDreams(filtered);
+      router.push('/journal');
+    } catch {
+      setSaveError('We couldn’t remove the dream right now. Please try again.');
+      setDeleting(false);
+    }
+  }
+
+  async function generateInterpretation() {
+    if (!dream) return;
+    setInterpreting(true);
+    setInterpretation(null);
+
+    try {
+      const res = await fetch('/api/interpret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: dream.title,
+          content: dream.content,
+          mood: dream.mood,
+          lucidity: dream.lucidity,
+        }),
+      });
+      const data = await res.json();
+      setInterpretation(data.interpretation || 'The dream is still unfolding its meaning for you.');
+    } catch {
+      setInterpretation('There is a quiet thread running through this night. Sit with the feeling it left behind.');
+    } finally {
+      setInterpreting(false);
+    }
+  }
+
+  async function handleGenerateImage() {
+    if (!dream) return;
+
+    const currentCount = dream.image_generation_count || 0;
+    if (currentCount >= 2) {
+      setImageError("You've reached the regeneration limit for this dream.");
+      return;
+    }
+
+    setGeneratingImage(true);
+    setImageError(null);
+
+    try {
+      // Prefer real server action (works if dream is in DB)
+      const result = await generateDreamImageAction(dream.id);
+      if (result.error) {
+        if (result.error.includes('limit') || result.error.includes('not found')) {
+          // Fallback to local stub generation for locally-stored dreams
+          const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50);
+          const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200;
+          const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`;
+          const updatedDream: Dream = {
+            ...dream,
+            image_url: imageUrl,
+            image_generation_count: currentCount + 1,
+          } as Dream;
+          updateDream(updatedDream);
+        } else {
+          setImageError(result.error);
+        }
+      } else if (result.imageUrl) {
+        const updatedDream: Dream = {
+          ...dream,
+          image_url: result.imageUrl,
+          image_generation_count: result.count ?? currentCount + 1,
+        } as Dream;
+        updateDream(updatedDream);
+      }
+    } catch (e) {
+      // Fallback local
+      const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50);
+      const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200;
+      const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`;
+      const updatedDream: Dream = {
+        ...dream,
+        image_url: imageUrl,
+        image_generation_count: currentCount + 1,
+      } as Dream;
+      updateDream(updatedDream);
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-midnight-900 flex items-center justify-center p-6">
+        <div className="text-center">
+          <p className="text-text-300 mb-4">Dream not found.</p>
+          <Link href="/journal" className="btn">Return to journal</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dream) {
+    return (
+      <div className="min-h-screen bg-midnight-900 flex items-center justify-center p-6">
+        <div className="text-center text-text-400 text-sm flex items-center gap-2">
+          <div className="flex gap-1">
+            <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce" />
+          </div>
+          Opening this night…
+        </div>
+      </div>
+    );
+  }
+
+  const date = new Date(dream.dream_date);
+  const formattedDate = date.toLocaleDateString('en-US', { 
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+  });
 
   return (
-    <div className="min-h-screen bg-midnight-900 text-text-50">
-      {/* Header - consistent elegant style */}
+    <div className="min-h-screen bg-midnight-900">
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 flex h-16 items-center justify-between">
           <Link href="/journal" className="text-text-300 hover:text-text-100 flex items-center gap-2 text-sm">
             ← Journal
           </Link>
           <div className="flex gap-2 text-sm">
-            <Link 
-              href="/journal" 
-              className="btn-ghost px-4 py-1.5 text-xs rounded-2xl"
-            >
-              Full journal
-            </Link>
+            {!isEditing && (
+              <>
+                <button 
+                  onClick={() => setIsEditing(true)} 
+                  disabled={deleting}
+                  className="btn-ghost px-4 py-1.5 text-xs disabled:opacity-50"
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={deleteDream} 
+                  disabled={deleting}
+                  className="btn-ghost px-4 py-1.5 text-xs text-text-400 hover:text-red-400/80 disabled:opacity-50"
+                >
+                  {deleting ? 'Removing…' : 'Delete'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <div className="page max-w-2xl">
-        <DreamView dream={typedDream} />
+        {saveError && (
+          <div className="mb-4 rounded-2xl border border-red-900/30 bg-midnight-700 px-4 py-3 text-sm text-red-400/80">
+            {saveError}
+          </div>
+        )}
+
+        {!isEditing ? (
+          <>
+            {/* View mode - calm reading experience */}
+            <div className="mb-6">
+              <div className="text-xs uppercase tracking-[1.5px] text-text-400 mb-1.5">{formattedDate}</div>
+              <h1 className="text-3xl sm:text-[32px] font-semibold tracking-[-0.025em] leading-none text-text-50 pr-3">
+                {dream.title || 'Untitled dream'}
+              </h1>
+            </div>
+
+            {/* Meta row - refined (supports both local lucidity and DB is_lucid) */}
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm mb-6 text-text-300">
+              {(dream as any).is_lucid ? (
+                <span className="text-accent font-medium tracking-wider">LUCID</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Lucidity</span>
+                  <div className="flex gap-px pl-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < ((dream as any).lucidity || 3) ? 'bg-accent' : 'bg-midnight-400'}`} />
+                    ))}
+                  </div>
+                  <span className="text-text-400 tabular-nums">{(dream as any).lucidity || 3}/5</span>
+                </div>
+              )}
+              {dream.mood && <div>Mood · <span className="text-text-100">{dream.mood}</span></div>}
+            </div>
+
+            {(dream.tags || []).length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-8">
+                {(dream.tags || []).map((tag, i) => (
+                  <span key={i} className="tag">{tag}</span>
+                ))}
+              </div>
+            )}
+
+            {/* The dream body - generous reading */}
+            <div className="card p-7 sm:p-9">
+              <div className="dream-content whitespace-pre-line">
+                {dream.content}
+              </div>
+            </div>
+
+            {/* Image generation UI - artistic, calm, with limits */}
+            <div className="mt-8">
+              <div className="uppercase text-[10px] tracking-[1.5px] text-text-400 mb-2">Visual Echo</div>
+
+              {dream.image_url ? (
+                <div>
+                  <div className="relative overflow-hidden rounded-3xl border border-midnight-500/60 bg-midnight-800">
+                    <img
+                      src={dream.image_url}
+                      alt={`AI visualization of ${dream.title || 'this dream'}`}
+                      className="w-full h-auto max-h-[420px] object-cover"
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <span className="text-text-400">AI-generated scene from this dream’s essence</span>
+                    {(dream.image_generation_count || 0) < 2 ? (
+                      <button
+                        onClick={handleGenerateImage}
+                        disabled={generatingImage}
+                        className="btn-secondary text-xs px-4 py-1.5 disabled:opacity-50"
+                      >
+                        {generatingImage ? 'Regenerating…' : 'Regenerate (1 left)'}
+                      </button>
+                    ) : (
+                      <span className="text-text-400">You've reached the regeneration limit for this dream.</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateImage}
+                  disabled={generatingImage}
+                  className="w-full btn py-4 text-base flex items-center justify-center gap-3 disabled:bg-accent/60"
+                >
+                  {generatingImage ? (
+                    <>
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce" />
+                      </span>
+                      Weaving an image from your dream…
+                    </>
+                  ) : (
+                    <>✧ Generate Image</>
+                  )}
+                </button>
+              )}
+
+              {imageError && (
+                <div className="mt-3 text-sm text-red-400/80">{imageError}</div>
+              )}
+            </div>
+
+            {/* Interpretation / Reflect */}
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div>
+                  <div className="uppercase text-[10px] tracking-[1.5px] text-text-400">Reflection</div>
+                  <div className="text-lg font-medium tracking-tight">A quiet mirror</div>
+                </div>
+                {!interpretation && (
+                  <button 
+                    onClick={generateInterpretation} 
+                    disabled={interpreting}
+                    className="btn-secondary text-xs px-5 py-2.5"
+                  >
+                    {interpreting ? 'Reflecting…' : 'Ask for an interpretation'}
+                  </button>
+                )}
+              </div>
+
+              {interpreting && (
+                <div className="card p-7 text-text-300 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1 h-1 bg-accent rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1 h-1 bg-accent rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1 h-1 bg-accent rounded-full animate-bounce" />
+                    </div>
+                    <span>A quiet reflection is forming…</span>
+                  </div>
+                </div>
+              )}
+
+              {interpretation && (
+                <div className="card p-7 sm:p-8 border-l-2 border-accent/60 bg-midnight-700">
+                  <div className="prose text-[15px] leading-relaxed text-text-100">
+                    {interpretation.split('\n\n').map((para, idx) => (
+                      <p key={idx} className={idx > 0 ? 'mt-4' : ''}>{para}</p>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setInterpretation(null)} 
+                    className="mt-6 text-xs text-text-400 hover:text-text-200 underline-offset-4 hover:underline"
+                  >
+                    Hide reflection
+                  </button>
+                </div>
+              )}
+
+              {!interpretation && !interpreting && (
+                <p className="text-xs px-1 text-text-400 max-w-prose">A gentle, non-prescriptive reflection generated for you. Always take what resonates and leave the rest.</p>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Edit mode - reuse same form */
+          <div>
+            <div className="mb-6">
+              <h1 className="page-title text-2xl">Edit dream</h1>
+            </div>
+            <div className="card p-6 sm:p-8">
+              <DreamForm 
+                initialDream={dream} 
+                onSave={handleSaveFromForm} 
+                onCancel={() => setIsEditing(false)} 
+                isEditing 
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <BottomNav />
