@@ -207,7 +207,7 @@ input[type="submit"],
 
 /* Consistent spacing utilities for pages */
 .page {
-  @apply px-5 pb-24 pt-6 max-w-2xl mx-auto; /* generous side padding, space for bottom nav */
+  @apply px-5 pb-24 pt-8 max-w-2xl mx-auto; /* generous side padding, space for bottom nav, more top breathing */
 }
 
 .page-narrow {
@@ -216,11 +216,11 @@ input[type="submit"],
 
 /* Header styles */
 .page-header {
-  @apply flex items-center justify-between mb-8;
+  @apply flex items-center justify-between mb-10;
 }
 
 .page-title {
-  @apply text-3xl font-semibold tracking-[-0.03em] text-text-50;
+  @apply text-[31px] font-semibold tracking-[-0.035em] text-text-50;
 }
 
 /* Dream entry content styling for readability */
@@ -251,11 +251,50 @@ input[type="submit"],
 
 /* Empty state - artistic and calm */
 .empty-state {
-  @apply flex flex-col items-center justify-center py-16 px-6 text-center;
+  @apply flex flex-col items-center justify-center py-20 px-6 text-center;
 }
 
 .empty-state-icon {
   @apply mb-6 opacity-60;
+}
+
+/* Journal empty state refinement */
+.journal-empty {
+  @apply flex flex-col items-center justify-center py-24 px-8 text-center;
+}
+
+.journal-empty-art {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 2.25rem;
+}
+
+.journal-empty-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(157, 163, 188, 0.18);
+  border-radius: 9999px;
+}
+
+.journal-empty-art::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  background: rgba(157, 163, 188, 0.08);
+  border-radius: 9999px;
+}
+
+.journal-empty-moon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  background: rgba(124, 108, 240, 0.45);
+  border-radius: 9999px;
+  transform: translate(-40%, -50%);
 }
 
 /* Sign in specific */
@@ -290,7 +329,7 @@ button:active,
 
 /* Gentle list transitions */
 .dream-list {
-  @apply space-y-3;
+  @apply space-y-4;
 }
 
 /* Small detail polish */

@@ -92,53 +92,60 @@ export default function Journal() {
 
   return (
     <div className="min-h-screen bg-midnight-900">
-      {/* Top header - calm and consistent */}
+      {/* Top header — refined, minimal, artistic */}
       <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-700">
         <div className="max-w-2xl mx-auto px-5 flex h-16 items-center justify-between">
-          <Logo size="md" />
+          <div className="flex items-center gap-2.5">
+            <Logo size="md" />
+            <div className="w-px h-3 bg-text-500/30" />
+            <span className="text-[10px] tracking-[1.5px] text-text-400 font-medium">JOURNAL</span>
+          </div>
 
           <div className="flex items-center gap-1.5">
             <button 
               onClick={handleSignOut} 
               disabled={signingOut}
-              className="btn-ghost px-3 py-1.5 text-xs rounded-2xl disabled:opacity-60"
+              className="btn-ghost px-4 py-1.5 text-xs rounded-2xl disabled:opacity-60 tracking-wide"
             >
-              {signingOut ? 'Signing out…' : 'Sign out'}
+              {signingOut ? 'Leaving…' : 'Sign out'}
             </button>
-            <div className="w-7 h-7 rounded-full bg-midnight-600 flex items-center justify-center text-[10px] text-text-300 font-mono">B</div>
+            <div className="w-6 h-6 rounded-full bg-midnight-700 ring-1 ring-inset ring-midnight-500 flex items-center justify-center text-[9px] text-text-300 font-mono">B</div>
           </div>
         </div>
       </header>
 
       <div className="page max-w-2xl">
+        {/* Intentional header with breathing room */}
         <div className="page-header">
           <div>
             <h1 className="page-title">Journal</h1>
-            <p className="text-text-300 text-sm mt-0.5">
-              {isLoading ? 'Gathering your nights…' : `${filteredDreams.length} ${filteredDreams.length === 1 ? 'night' : 'nights'} remembered`}
+            <p className="text-text-400 text-xs tracking-[1.25px] mt-1.5 uppercase">
+              {isLoading ? 'Gathering your nights' : `${filteredDreams.length} ${filteredDreams.length === 1 ? 'night' : 'nights'} remembered`}
             </p>
           </div>
-          <Link href="/journal/new" className="btn text-sm px-5 py-3 hidden sm:inline-flex">
-            + New dream
+          <Link href="/journal/new" className="btn text-sm px-6 py-3 hidden sm:inline-flex tracking-wide">
+            New thread
           </Link>
         </div>
 
-        {/* Search + filters - comfortable touch targets */}
-        <div className="mb-6 space-y-3">
+        {/* Search + filters — refined, not cluttered */}
+        <div className="mb-10 space-y-4">
           <div className="relative">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search dreams, tags, feelings…"
-              className="input pl-12 py-[17px] pr-11"
+              placeholder="Search nights, feelings, fragments…"
+              className="input pl-11 py-[15px] pr-10 text-[14.5px]"
               aria-label="Search dreams"
             />
-            <div className="absolute left-5 top-4 text-text-400 pointer-events-none">⌘</div>
+            <div className="absolute left-4 top-[17px] text-text-400/70 pointer-events-none">
+              <span className="text-base leading-none">⌘</span>
+            </div>
             {search && (
               <button 
                 onClick={() => setSearch('')} 
-                className="absolute right-4 top-4 text-text-400 hover:text-text-200 text-lg leading-none"
+                className="absolute right-3.5 top-3.5 text-text-400 hover:text-text-100 text-xl leading-none px-1"
                 aria-label="Clear search"
               >
                 ×
@@ -146,20 +153,20 @@ export default function Journal() {
             )}
           </div>
 
-          {/* Filter chips - easy thumb taps */}
+          {/* Elegant filter pills */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { key: 'all', label: 'All dreams' },
-              { key: 'recent', label: 'Most recent' },
-              { key: 'lucid', label: 'Lucid (4–5)' },
+              { key: 'all', label: 'All' },
+              { key: 'recent', label: 'Recent' },
+              { key: 'lucid', label: 'Lucid' },
             ].map((f) => (
               <button
                 key={f.key}
                 onClick={() => setActiveFilter(f.key as 'all' | 'lucid' | 'recent')}
-                className={`px-5 py-2 text-sm rounded-3xl border transition-all active:scale-[0.985] touch-target ${
+                className={`px-4 py-[7px] text-xs tracking-[0.5px] rounded-3xl border transition-all active:scale-[0.985] touch-target font-medium ${
                   activeFilter === f.key 
                     ? 'bg-accent text-white border-accent' 
-                    : 'bg-midnight-800 border-midnight-500 text-text-200 hover:bg-midnight-700'
+                    : 'bg-midnight-800/70 border-midnight-500 text-text-300 hover:bg-midnight-700 hover:text-text-100'
                 }`}
               >
                 {f.label}
@@ -168,25 +175,25 @@ export default function Journal() {
           </div>
         </div>
 
-        {/* List with loading / error states */}
+        {/* List area with refined states */}
         {isLoading ? (
-          <div className="py-12 text-center">
-            <div className="inline-flex items-center gap-2 text-text-400 text-sm">
+          <div className="py-16 text-center">
+            <div className="inline-flex items-center gap-2 text-text-400 text-sm tracking-wide">
               <div className="flex gap-1">
                 <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
                 <span className="w-1 h-1 bg-text-400 rounded-full animate-bounce" />
               </div>
-              Loading your journal…
+              Opening the archive…
             </div>
           </div>
         ) : loadError ? (
-          <div className="card p-6 text-center border border-midnight-500">
-            <p className="text-text-200 mb-2">Something felt off while opening your journal.</p>
-            <p className="text-sm text-text-400 mb-4">{loadError}</p>
+          <div className="card p-7 text-center border border-midnight-500/70">
+            <p className="text-text-200 mb-2 tracking-tight">The threads feel tangled right now.</p>
+            <p className="text-sm text-text-400 mb-5 leading-relaxed">{loadError}</p>
             <button 
               onClick={() => window.location.reload()} 
-              className="btn-secondary text-sm"
+              className="btn-secondary text-sm tracking-wide"
             >
               Try again
             </button>
@@ -198,22 +205,37 @@ export default function Journal() {
             ))}
           </div>
         ) : (
-          <div className="empty-state">
-            <div className="empty-state-icon text-5xl opacity-70">🌙</div>
-            <p className="text-text-200 mb-1 font-medium">No dreams found</p>
-            <p className="text-text-400 text-sm max-w-[260px]">Try a different search or filter, or start a new entry.</p>
-            <Link href="/journal/new" className="btn mt-6">Write a dream</Link>
+          /* Significantly improved poetic empty state — minimal, artistic, welcoming */
+          <div className="journal-empty">
+            <div className="journal-empty-art" aria-hidden="true">
+              <div className="journal-empty-moon" />
+            </div>
+
+            <p className="text-[18px] font-medium tracking-[-0.015em] text-text-100 mb-3">
+              The first thread begins in silence.
+            </p>
+
+            <p className="max-w-[26ch] text-text-300 text-[14.5px] leading-relaxed tracking-[-0.005em]">
+              Dreams visit in the dark. When one lingers at dawn, return here and weave it into something you can keep.
+            </p>
+
+            <Link 
+              href="/journal/new" 
+              className="mt-9 btn-secondary text-sm px-8 py-3 tracking-wide"
+            >
+              Begin your first night
+            </Link>
           </div>
         )}
 
-        {/* Mobile friendly New button - always visible */}
-        <div className="fixed bottom-5 right-5 z-40 sm:hidden">
+        {/* Elegant floating action button — well-integrated, not generic */}
+        <div className="fixed bottom-6 right-6 z-40 sm:hidden">
           <Link 
             href="/journal/new"
-            className="btn flex items-center justify-center w-14 h-14 rounded-full p-0 shadow-lg text-2xl leading-none active:scale-95"
-            aria-label="New dream"
+            className="group flex h-14 w-14 items-center justify-center rounded-full border border-midnight-500/70 bg-midnight-800/95 backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] active:scale-[0.94] transition-all hover:border-accent/60 hover:bg-midnight-700/95"
+            aria-label="Capture a new dream"
           >
-            +
+            <span className="text-accent text-[26px] font-light leading-none tracking-tighter select-none transition-colors group-hover:text-accent/90">+</span>
           </Link>
         </div>
       </div>
