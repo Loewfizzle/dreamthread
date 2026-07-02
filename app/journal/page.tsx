@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getDreams } from '@/lib/dreams'
 import type { Dream } from '@/lib/dreams'
+import SignOutButton from './SignOutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,36 +43,62 @@ const getExcerpt = (content: string): string => {
 }
 
 export default async function JournalPage() {
+  const supabase = await (await import('@/lib/supabase/server')).createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   let dreams: Dream[] = []
   let fetchError: string | null = null
 
-  try {
-    dreams = await getDreams({ limit: 12 })
-  } catch (err) {
-    console.error('Failed to load dreams:', err)
-    fetchError = 'Could not load your dreams right now. You may need to sign in.'
+  if (user) {
+    try {
+      dreams = await getDreams({ limit: 12 })
+    } catch (err) {
+      console.error('Failed to load dreams:', err)
+      fetchError = 'Could not load your dreams right now.'
+    }
   }
 
   return (
     <div className="min-h-screen bg-background font-sans">
       <div className="mx-auto max-w-2xl px-5">
         {/* Poetic, minimal header */}
-        <header className="pt-14 pb-9">
-          <p className="text-[10px] font-medium tracking-[4px] text-muted/70">DREAMTHREAD</p>
-          <h1 className="mt-1 text-6xl font-semibold tracking-[-2.8px] text-foreground">Journal</h1>
-          <p className="mt-4 max-w-[17rem] text-[15px] leading-snug text-muted/90">
-            The night’s quiet offerings, held gently here.
-          </p>
+        <header className="pt-14 pb-9 flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-medium tracking-[4px] text-muted/70">DREAMTHREAD</p>
+            <h1 className="mt-1 text-6xl font-semibold tracking-[-2.8px] text-foreground">Journal</h1>
+            <p className="mt-4 max-w-[17rem] text-[15px] leading-snug text-muted/90">
+              The night’s quiet offerings, held gently here.
+            </p>
+          </div>
+          {user && (
+            <div className="mt-1">
+              <SignOutButton />
+            </div>
+          )}
         </header>
 
-        {fetchError && (
+        {!user ? (
+          <div className="flex min-h-[50vh] flex-col items-center justify-center py-12 text-center">
+            <div className="mb-8 h-px w-10 bg-border/50" />
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Sign in to see your dreams</h2>
+            <p className="mt-3 max-w-xs text-[15px] leading-relaxed text-muted/90">
+              Your private journal is just a magic link away.
+            </p>
+            <Link
+              href="/sign-in"
+              className="mt-6 inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              Sign in with email
+            </Link>
+          </div>
+        ) : fetchError ? (
           <div className="mb-8 rounded-3xl border border-border/70 bg-card p-8 text-center">
             <p className="text-muted">Unable to retrieve your dreams at the moment.</p>
             <p className="mt-1 text-sm text-muted/70">Please return in a little while.</p>
           </div>
-        )}
-
-        {dreams.length === 0 && !fetchError ? (
+        ) : dreams.length === 0 ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center py-12 text-center">
             <div className="mb-8 h-px w-10 bg-border/50" />
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">No dreams yet</h2>

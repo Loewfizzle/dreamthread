@@ -1,6 +1,18 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import NewDreamForm from './NewDreamForm'
+import SignOutButton from '../SignOutButton'
 
-export default function NewDreamPage() {
+export default async function NewDreamPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/sign-in')
+  }
+
   return (
     <div className="min-h-screen bg-background font-sans">
       <div className="mx-auto max-w-2xl px-6 py-12">
@@ -12,9 +24,7 @@ export default function NewDreamPage() {
           >
             ← Back to Journal
           </a>
-          <span className="text-xs uppercase tracking-[2px] text-muted">
-            Dreamthread
-          </span>
+          <SignOutButton />
         </div>
 
         {/* Header */}

@@ -1,6 +1,9 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getDream } from '@/lib/dreams'
 import type { Dream } from '@/lib/dreams'
+import { createClient } from '@/lib/supabase/server'
+import SignOutButton from '../SignOutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +33,15 @@ interface DreamDetailPageProps {
 
 export default async function DreamDetailPage({ params }: DreamDetailPageProps) {
   const { id } = await params
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/sign-in')
+  }
 
   let dream: Dream | null = null
   let fetchError: string | null = null
@@ -103,12 +115,15 @@ export default async function DreamDetailPage({ params }: DreamDetailPageProps) 
     <div className="min-h-screen bg-background font-sans">
       <div className="mx-auto max-w-2xl px-5 py-12">
         {/* Back navigation */}
-        <Link
-          href="/journal"
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted transition hover:text-foreground mb-8"
-        >
-          ← Back to Journal
-        </Link>
+        <div className="mb-8 flex items-center justify-between">
+          <Link
+            href="/journal"
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted transition hover:text-foreground"
+          >
+            ← Back to Journal
+          </Link>
+          <SignOutButton />
+        </div>
 
         <article className="rounded-3xl border border-border/60 bg-card px-7 py-9 transition-all">
           {/* Meta */}
