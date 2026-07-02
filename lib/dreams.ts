@@ -1,16 +1,20 @@
 // Source of truth for Dream type and storage helpers
 export interface Dream {
   id: string;
-  title: string;
+  title?: string | null;
   content: string;
   dream_date: string;
-  tags?: string[];
+  tags?: string[] | null;
   lucidity?: number;
-  mood?: string;
+  mood?: string | null;
   created_at?: string;
+  updated_at?: string;
   // Support for remote/server Dream shape
   is_lucid?: boolean;
   user_id?: string;
+  // Image generation support (from DB)
+  image_url?: string | null;
+  image_generation_count?: number;
 }
 
 export const STORAGE_KEY = 'dreamthread:entries';
@@ -51,7 +55,13 @@ export function loadDreams(): Dream[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as Dream[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(d => ({
+          ...d,
+          image_url: d.image_url ?? null,
+          image_generation_count: d.image_generation_count ?? 0,
+        }));
+      }
     }
     // First visit: seed samples (gracefully)
     try {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateDreamAction, deleteDreamAction } from '../new/actions'
+import { updateDreamAction, deleteDreamAction, generateDreamImageAction } from '../new/actions'
 import type { Dream } from '@/lib/dreams'
 import { formatDreamDate } from '@/lib/dream-utils'
 
@@ -29,6 +29,8 @@ export default function DreamView({ dream }: DreamViewProps) {
   const [isDeleteConfirm, setIsDeleteConfirm] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [generatingImage, setGeneratingImage] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
 
   // Local state for edit form, initialized from dream
   const [editTitle, setEditTitle] = useState(dream.title || '')
@@ -100,6 +102,31 @@ export default function DreamView({ dream }: DreamViewProps) {
         router.refresh()
       }
     })
+  }
+
+  const handleGenerateImage = async () => {
+    const currentCount = dream.image_generation_count || 0
+    if (currentCount >= 2) {
+      setImageError("You've reached the regeneration limit for this dream.")
+      return
+    }
+
+    setGeneratingImage(true)
+    setImageError(null)
+
+    try {
+      const result = await generateDreamImageAction(dream.id)
+      if (result.error) {
+        setImageError(result.error)
+      } else if (result.imageUrl) {
+        // Refresh server data to pick up new image_url and count
+        router.refresh()
+      }
+    } catch (err) {
+      setImageError('Failed to generate image. Please try again.')
+    } finally {
+      setGeneratingImage(false)
+    }
   }
 
   return (
@@ -181,6 +208,60 @@ export default function DreamView({ dream }: DreamViewProps) {
           {/* Full content */}
           <div className="mt-2 text-[15.5px] leading-[1.75] text-foreground/85 whitespace-pre-wrap">
             {dream.content}
+          </div>
+
+          {/* Image section - artistic, calm, limited regenerations */}
+          <div className="mt-8 pt-6 border-t border-border/60">
+            <div className="text-[10px] uppercase tracking-[1.75px] text-muted/80 mb-2">Visual Echo</div>
+
+            {dream.image_url ? (
+              <div>
+                <div className="relative overflow-hidden rounded-3xl border border-border/50 bg-muted/5">
+                  <img
+                    src={dream.image_url}
+                    alt={`AI visualization of ${dream.title || 'this dream'}`}
+                    className="w-full h-auto max-h-[380px] object-cover"
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-muted/80">AI-generated visualization</span>
+                  {(dream.image_generation_count || 0) < 2 ? (
+                    <button
+                      onClick={handleGenerateImage}
+                      disabled={generatingImage || isPending}
+                      className="rounded-2xl border border-border bg-card px-4 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted/10 disabled:opacity-50"
+                    >
+                      {generatingImage ? 'Regenerating…' : 'Regenerate image'}
+                    </button>
+                  ) : (
+                    <span className="text-muted/70">You've reached the regeneration limit for this dream.</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleGenerateImage}
+                disabled={generatingImage || isPending}
+                className="w-full rounded-3xl border border-border bg-card py-3.5 text-sm font-medium text-foreground transition hover:bg-muted/10 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {generatingImage ? (
+                  <>
+                    <span className="flex gap-1">
+                      <span className="w-1 h-1 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1 h-1 bg-foreground/60 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1 h-1 bg-foreground/60 rounded-full animate-bounce" />
+                    </span>
+                    Generating image…
+                  </>
+                ) : (
+                  '✧ Generate Image'
+                )}
+              </button>
+            )}
+
+            {imageError && (
+              <div className="mt-2 text-xs text-red-400/80">{imageError}</div>
+            )}
           </div>
         </>
       ) : (

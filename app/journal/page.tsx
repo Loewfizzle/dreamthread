@@ -54,7 +54,7 @@ export default function Journal() {
     if (search.trim()) {
       const q = search.toLowerCase().trim();
       result = result.filter(d =>
-        d.title.toLowerCase().includes(q) ||
+        (d.title || '').toLowerCase().includes(q) ||
         d.content.toLowerCase().includes(q) ||
         (d.tags || []).some(t => t.toLowerCase().includes(q)) ||
         (d.mood || '').toLowerCase().includes(q)

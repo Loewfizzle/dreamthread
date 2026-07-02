@@ -33,6 +33,7 @@ export interface Database {
           mood: string | null
           is_lucid: boolean
           image_url: string | null
+          image_generation_count: number
           tags: string[] | null
           created_at: string
           updated_at: string
@@ -46,6 +47,7 @@ export interface Database {
           mood?: string | null
           is_lucid?: boolean
           image_url?: string | null
+          image_generation_count?: number
           tags?: string[] | null
           created_at?: string
           updated_at?: string
@@ -59,6 +61,7 @@ export interface Database {
           mood?: string | null
           is_lucid?: boolean
           image_url?: string | null
+          image_generation_count?: number
           tags?: string[] | null
           created_at?: string
           updated_at?: string

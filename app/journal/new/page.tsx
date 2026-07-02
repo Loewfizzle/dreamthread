@@ -16,13 +16,15 @@ export default function NewDream() {
 
     const newDream: Dream = {
       id: dreamData.id || `d_${Date.now().toString(36)}`,
-      title: dreamData.title || 'Untitled dream',
+      title: dreamData.title || null,
       content: dreamData.content || '',
       dream_date: dreamData.dream_date || new Date().toISOString().split('T')[0],
-      tags: dreamData.tags,
+      tags: dreamData.tags || null,
       lucidity: dreamData.lucidity,
-      mood: dreamData.mood,
+      mood: dreamData.mood || null,
       created_at: new Date().toISOString(),
+      image_url: null,
+      image_generation_count: 0,
     };
 
     // If editing an existing (though new page shouldn't, support reuse)

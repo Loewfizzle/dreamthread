@@ -187,3 +187,62 @@ export async function deleteDreamAction(id: string): Promise<{ error?: string; s
     return { error: 'Failed to delete dream. Please try again.' }
   }
 }
+
+export async function generateDreamImageAction(dreamId: string): Promise<{ 
+  imageUrl?: string; 
+  error?: string; 
+  count?: number 
+}> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'You must be signed in to generate images.' }
+  }
+
+  // Fetch current dream to check count and get content for prompt
+  const { data: dream, error: fetchError } = await supabase
+    .from('dreams')
+    .select('title, content, image_generation_count, image_url')
+    .eq('id', dreamId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (fetchError || !dream) {
+    return { error: 'Dream not found or access denied.' }
+  }
+
+  const currentCount = dream.image_generation_count || 0
+
+  if (currentCount >= 2) {
+    return { error: "You've reached the regeneration limit for this dream." }
+  }
+
+  // STUB: Generate image URL based on dream content.
+  // In next step, this will call Grok Imagine / image gen API.
+  // For now, use a deterministic placeholder that varies by dream for demo.
+  const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50)
+  const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200
+  const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`
+
+  const newCount = currentCount + 1
+
+  // Save to DB
+  const { error: updateError } = await supabase
+    .from('dreams')
+    .update({
+      image_url: imageUrl,
+      image_generation_count: newCount,
+    })
+    .eq('id', dreamId)
+    .eq('user_id', user.id)
+
+  if (updateError) {
+    console.error('generateDreamImageAction update error:', updateError)
+    return { error: 'Failed to save the generated image. Please try again.' }
+  }
+
+  return { imageUrl, count: newCount }
+}
