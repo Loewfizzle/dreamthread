@@ -1,9 +1,9 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createDream } from '@/lib/dreams'
+import { createDream, updateDream, deleteDream } from '@/lib/dreams'
 import { createClient } from '@/lib/supabase/server'
-import type { DreamInsert } from '@/types/database'
+import type { DreamInsert, DreamUpdate } from '@/types/database'
 
 export type NewDreamFormState = {
   error?: string
@@ -120,5 +120,70 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
   } catch (err) {
     console.error('Error calling Whisper API:', err)
     return { error: 'Failed to transcribe audio. Please try again or type manually.' }
+  }
+}
+
+export async function updateDreamAction(
+  id: string,
+  prevState: { error?: string; success?: boolean },
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const title = formData.get('title')?.toString().trim() ?? ''
+  const content = formData.get('content')?.toString().trim() ?? ''
+  const mood = formData.get('mood')?.toString().trim() ?? ''
+  const isLucid = formData.get('is_lucid') === 'on'
+
+  if (!content) {
+    return { error: 'Dream content is required.' }
+  }
+
+  if (content.length < 3) {
+    return { error: 'Dream content must be at least a few characters.' }
+  }
+
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: 'You must be signed in to update dreams.' }
+    }
+
+    const updates: DreamUpdate = {
+      title: title.length > 0 ? title : null,
+      content,
+      mood: mood.length > 0 ? mood : null,
+      is_lucid: isLucid,
+      updated_at: new Date().toISOString(),
+    }
+
+    await updateDream(id, updates)
+
+    return { success: true }
+  } catch (err) {
+    console.error('updateDreamAction error:', err)
+    return { error: 'Failed to update dream. Please try again.' }
+  }
+}
+
+export async function deleteDreamAction(id: string): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: 'You must be signed in to delete dreams.' }
+    }
+
+    await deleteDream(id)
+
+    return { success: true }
+  } catch (err) {
+    console.error('deleteDreamAction error:', err)
+    return { error: 'Failed to delete dream. Please try again.' }
   }
 }
