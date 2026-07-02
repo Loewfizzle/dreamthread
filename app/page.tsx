@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
-import DreamCard from '@/components/DreamCard';
 import BottomNav from '@/components/BottomNav';
 import { supabase, signOut } from '@/lib/supabase';
 import { getRecentDreams, loadDreams } from '@/lib/dreams';
+import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
@@ -15,6 +15,8 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentDreams, setRecentDreams] = useState<Dream[]>([]);
+  const [insight, setInsight] = useState('');
+  const [keywords, setKeywords] = useState<Array<{ word: string; count: number }>>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -26,7 +28,10 @@ export default function Home() {
       if (isMounted) {
         setUser(currentUser);
         if (currentUser) {
-          setRecentDreams(getRecentDreams(4));
+          const allDreams = loadDreams();
+          setRecentDreams(getRecentDreams(3));
+          setInsight(generatePoeticInsight(allDreams));
+          setKeywords(extractKeywords(allDreams, 6));
         }
         setLoading(false);
       }
@@ -39,9 +44,14 @@ export default function Home() {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        setRecentDreams(getRecentDreams(4));
+        const allDreams = loadDreams();
+        setRecentDreams(getRecentDreams(3));
+        setInsight(generatePoeticInsight(allDreams));
+        setKeywords(extractKeywords(allDreams, 6));
       } else {
         setRecentDreams([]);
+        setInsight('');
+        setKeywords([]);
       }
     });
 
@@ -150,12 +160,10 @@ export default function Home() {
     );
   }
 
-  // ========== LOGGED-IN: Premium, artistic dashboard experience ==========
-  const totalDreams = loadDreams().length;
-
+  // ========== LOGGED-IN: Artistic, personal homepage ==========
   return (
     <div className="min-h-screen bg-midnight-900 text-text-50">
-      {/* Refined top navigation for signed-in state */}
+      {/* Refined minimal top navigation */}
       <nav className="sticky top-0 z-40 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -183,94 +191,114 @@ export default function Home() {
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-5 pt-9 pb-24">
-        {/* Artistic, intentional header area */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="moon-dot" />
-            <span className="uppercase tracking-[2px] text-xs text-text-400">Good evening</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-[-0.035em] leading-none mb-2">
-            What did the night bring?
-          </h1>
-          <p className="text-text-300 text-[15.5px] max-w-[28ch]">
-            There is no rush. Only the thread you choose to follow.
-          </p>
-        </div>
-
-        {/* PROMINENT, BEAUTIFUL "Record your dream" — near the top, high-quality artistic presence */}
+      <div className="max-w-2xl mx-auto px-5 pt-6 pb-24">
+        {/* 1. Large, prominent "Record your dream" button as hero */}
         <Link 
           href="/journal/new" 
-          className="group block mb-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 rounded-3xl"
+          className="group block mb-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/20 rounded-3xl"
         >
-          <div className="card p-7 sm:p-9 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7 transition-all group-hover:border-midnight-500 group-active:scale-[0.995]">
-            <div className="flex-shrink-0">
-              <div className="w-14 h-14 rounded-2xl bg-midnight-600 flex items-center justify-center text-3xl text-accent/90 group-hover:text-accent transition-colors">
+          <div className="card p-8 sm:p-10 flex flex-col gap-4 sm:gap-5 transition-all group-hover:border-midnight-400 group-active:scale-[0.993]">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-midnight-600 flex items-center justify-center text-4xl text-accent/90 group-hover:text-accent transition-colors">
                 ✧
               </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="text-[21px] sm:text-2xl font-semibold tracking-[-0.02em] text-text-50 group-hover:text-accent transition-colors">
+              <div className="min-w-0 flex-1">
+                <div className="text-3xl sm:text-[34px] font-semibold tracking-[-0.03em] text-text-50 group-hover:text-accent transition-colors leading-none">
                   Record your dream
                 </div>
+                <p className="mt-2.5 text-text-200 text-[15px] leading-snug pr-2">
+                  The night still lingers. Capture its textures while they are close.
+                </p>
               </div>
-              <p className="text-text-200 text-[14.5px] leading-snug pr-4">
-                The details are still close. Give them form before they drift.
-              </p>
             </div>
-
-            <div className="self-end sm:self-center text-accent text-2xl transition-transform group-hover:translate-x-0.5">
+            <div className="self-end text-accent text-xl transition-transform group-hover:translate-x-0.5 pr-1">
               →
             </div>
           </div>
         </Link>
 
-        {/* Journal list underneath — refined preview, generous and artistic */}
+        {/* 2. "Lately in your dreams" section — artistic, calm, insightful */}
         <div>
-          <div className="flex items-baseline justify-between mb-5 px-1">
-            <div>
-              <div className="text-sm uppercase tracking-[1.5px] text-text-400 mb-px">Your journal</div>
-              <div className="text-[21px] font-semibold tracking-[-0.015em]">
-                {totalDreams} {totalDreams === 1 ? 'night' : 'nights'} remembered
-              </div>
-            </div>
-            <Link 
-              href="/journal" 
-              className="text-sm text-accent hover:text-accent-hover transition-colors font-medium flex items-center gap-1"
-            >
-              See all <span aria-hidden>→</span>
-            </Link>
+          <div className="mb-6">
+            <div className="uppercase text-[10px] tracking-[1.75px] text-text-400 mb-1">Reflection</div>
+            <h2 className="text-[27px] font-semibold tracking-[-0.025em] leading-none">
+              Lately in your dreams
+            </h2>
           </div>
 
-          {recentDreams.length > 0 ? (
-            <div className="dream-list space-y-[13px]">
-              {recentDreams.map((dream) => (
-                <DreamCard key={dream.id} dream={dream} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state border border-midnight-500/60 bg-midnight-700/40 rounded-3xl py-14">
-              <div className="journal-empty-art scale-75 mb-2" aria-hidden="true">
-                <div className="journal-empty-moon" />
+          {/* Gentle poetic insight */}
+          {insight && (
+            <p className="text-text-200 text-[15px] leading-relaxed italic mb-7 max-w-[32ch]">
+              “{insight}”
+            </p>
+          )}
+
+          {/* Refined artistic word cloud — elegant visual accent */}
+          {keywords.length > 0 && (
+            <div className="mb-8">
+              <div className="text-[10px] uppercase tracking-[1.5px] text-text-400 mb-2.5">Frequent threads</div>
+              <div className="flex flex-wrap gap-x-3.5 gap-y-1.5">
+                {keywords.map((k, i) => {
+                  const size = Math.max(13, Math.min(23, 12 + (k.count - 1) * 2.5));
+                  const opacity = Math.min(0.95, 0.55 + (k.count - 1) * 0.08);
+                  return (
+                    <span 
+                      key={i} 
+                      className="font-medium text-text-300 select-none transition-colors"
+                      style={{ 
+                        fontSize: `${size}px`, 
+                        opacity,
+                        letterSpacing: size > 18 ? '-0.01em' : '0'
+                      }}
+                    >
+                      {k.word}
+                    </span>
+                  );
+                })}
               </div>
-              <p className="text-text-200 font-medium mb-1 tracking-tight">The first thread begins here.</p>
-              <p className="text-text-400 text-sm max-w-[240px] mx-auto leading-relaxed">
-                Your dreams will appear in this quiet space once recorded.
-              </p>
+            </div>
+          )}
+
+          {/* 2–3 small preview cards */}
+          {recentDreams.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-[1.5px] text-text-400 mb-3">Recent glimpses</div>
+              <div className="space-y-2.5">
+                {recentDreams.map((dream) => {
+                  const dateLabel = formatDreamDate(dream.dream_date);
+                  const excerpt = getExcerpt(dream.content, 85);
+                  return (
+                    <Link 
+                      key={dream.id} 
+                      href={`/journal/${dream.id}`} 
+                      className="block card p-4 active:scale-[0.993] focus-visible:ring-1 focus-visible:ring-accent/20"
+                    >
+                      <div className="flex items-center justify-between text-[11px] text-text-400 mb-1.5">
+                        <span>{dateLabel}</span>
+                        {dream.mood && <span className="text-text-300">{dream.mood}</span>}
+                      </div>
+                      <div className="font-medium text-[15px] tracking-[-0.01em] text-text-50 line-clamp-1 pr-2">
+                        {dream.title || 'Untitled dream'}
+                      </div>
+                      <div className="text-text-300 text-xs leading-relaxed line-clamp-2 mt-1 pr-1">
+                        {excerpt}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {recentDreams.length === 0 && !insight && (
+            <div className="text-text-400 text-sm italic">
+              Your first dreams will begin to weave patterns here.
             </div>
           )}
         </div>
-
-        {/* Subtle artistic footer note for logged-in homepage */}
-        <div className="mt-16 text-center text-[11px] text-text-400 tracking-widest">
-          DREAMTHREAD · PRIVATE BY NATURE
-        </div>
       </div>
 
-      {/* Bottom nav for thumb comfort on mobile (consistent with journal) */}
+      {/* Bottom nav for thumb comfort on mobile */}
       <BottomNav />
     </div>
   );
