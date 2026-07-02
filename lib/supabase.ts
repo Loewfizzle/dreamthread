@@ -39,9 +39,7 @@ export async function getCurrentUser() {
 
 // Magic link authentication (passwordless)
 export async function signInWithOtp(email: string) {
-  // Always prefer NEXT_PUBLIC_SITE_URL for reliable redirects (handles local vs prod)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-  const emailRedirectTo = `${siteUrl}/auth/callback`;
+  const emailRedirectTo = 'https://dreamthread.app/auth/callback';
 
   const { data, error } = await supabase.auth.signInWithOtp({
     email: email.trim(),

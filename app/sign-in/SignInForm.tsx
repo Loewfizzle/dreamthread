@@ -25,17 +25,8 @@ export default function SignInForm({ next }: SignInFormProps) {
 
     const supabase = createClient()
 
-    // Always send magic links to the live site (dreamthread.app)
-    // This ensures users are redirected to production after confirming the link,
-    // even if they signed up from localhost.
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://dreamthread.app'
-    let emailRedirectTo = `${siteUrl}/auth/callback`
-
-    // If a 'next' destination was provided (e.g. from a protected page),
-    // include it so the user is sent there after signing in.
-    if (next) {
-      emailRedirectTo += `?next=${encodeURIComponent(next)}`
-    }
+    // Hardcoded to production for reliable Magic Link redirects (as per requirements)
+    const emailRedirectTo = 'https://dreamthread.app/auth/callback'
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),

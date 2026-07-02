@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { signInWithOtp } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/Logo';
 
 export default function SignIn() {
@@ -18,7 +18,13 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      const { error } = await signInWithOtp(email.trim());
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: 'https://dreamthread.app/auth/callback',
+        },
+      });
       if (error) throw error;
       setMessage("Check your inbox — the email is from Dreamthread. It may take a minute to arrive.");
     } catch (err: unknown) {
@@ -42,6 +48,17 @@ export default function SignIn() {
     setError(null);
     // Keep the email so user can resend easily, or clear if preferred
   }
+
+  // Support error param from callback redirect (e.g. auth failure), without useSearchParams hook for build compatibility
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const err = params.get('error');
+      if (err) {
+        setError(err);
+      }
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-midnight-900 flex flex-col">
