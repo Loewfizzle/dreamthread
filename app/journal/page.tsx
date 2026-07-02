@@ -74,9 +74,9 @@ export default async function JournalPage() {
         {dreams.length === 0 && !fetchError ? (
           <div className="flex min-h-[50vh] flex-col items-center justify-center py-12 text-center">
             <div className="mb-8 h-px w-10 bg-border/50" />
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your journal is empty</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">No dreams yet</h2>
             <p className="mt-3 max-w-xs text-[15px] leading-relaxed text-muted/90">
-              The first dream is waiting to be remembered and recorded.
+              Tap the button to record your first one.
             </p>
           </div>
         ) : null}
@@ -88,42 +88,47 @@ export default async function JournalPage() {
               const excerpt = getExcerpt(dream.content)
 
               return (
-                <article
+                <Link
                   key={dream.id}
-                  className="group rounded-3xl border border-border/60 bg-card px-7 py-8 transition-all duration-200 hover:border-border/80 hover:shadow-[0_1px_6px_rgb(0,0,0,0.03)]"
+                  href={`/journal/${dream.id}`}
+                  className="block active:scale-[0.985] transition-transform duration-150"
                 >
-                  {/* Elegant meta row */}
-                  <div className="flex items-center gap-2 text-[11px] font-medium tracking-[3px] text-muted/80">
-                    <time dateTime={dream.dream_date}>{formattedDate}</time>
+                  <article
+                    className="group rounded-3xl border border-border/60 bg-card px-7 py-8 transition-all duration-200 hover:border-border/80 hover:shadow-[0_1px_6px_rgb(0,0,0,0.03)]"
+                  >
+                    {/* Elegant meta row */}
+                    <div className="flex items-center gap-2 text-[11px] font-medium tracking-[3px] text-muted/80">
+                      <time dateTime={dream.dream_date}>{formattedDate}</time>
 
-                    {dream.mood && (
+                      {dream.mood && (
+                        <>
+                          <span className="text-muted/40">·</span>
+                          <span className="font-normal tracking-normal text-accent">{dream.mood}</span>
+                        </>
+                      )}
+
+                      {dream.is_lucid && (
+                        <span className="ml-1 text-accent font-medium tracking-[1.5px]">LUCID</span>
+                      )}
+                    </div>
+
+                    {/* Title or excerpt as primary text */}
+                    {dream.title ? (
                       <>
-                        <span className="text-muted/40">·</span>
-                        <span className="font-normal tracking-normal text-accent">{dream.mood}</span>
+                        <h3 className="mt-6 text-[21px] font-semibold tracking-[-0.35px] leading-tight text-foreground">
+                          {dream.title}
+                        </h3>
+                        <p className="mt-3 text-[14.5px] leading-[1.7] text-foreground/75 line-clamp-3">
+                          {excerpt}
+                        </p>
                       </>
-                    )}
-
-                    {dream.is_lucid && (
-                      <span className="ml-1 text-accent font-medium tracking-[1.5px]">LUCID</span>
-                    )}
-                  </div>
-
-                  {/* Title or excerpt as primary text */}
-                  {dream.title ? (
-                    <>
-                      <h3 className="mt-6 text-[21px] font-semibold tracking-[-0.35px] leading-tight text-foreground">
-                        {dream.title}
-                      </h3>
-                      <p className="mt-3 text-[14.5px] leading-[1.7] text-foreground/75 line-clamp-3">
+                    ) : (
+                      <p className="mt-6 text-[15.5px] leading-[1.7] text-foreground/80 line-clamp-4">
                         {excerpt}
                       </p>
-                    </>
-                  ) : (
-                    <p className="mt-6 text-[15.5px] leading-[1.7] text-foreground/80 line-clamp-4">
-                      {excerpt}
-                    </p>
-                  )}
-                </article>
+                    )}
+                  </article>
+                </Link>
               )
             })}
           </div>
