@@ -197,3 +197,11 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// -----------------------------------------------------------------------------
+// Convenience aliases for the dreams table (manually maintained / appended)
+// -----------------------------------------------------------------------------
+
+export type Dream = Database['public']['Tables']['dreams']['Row']
+export type DreamInsert = Database['public']['Tables']['dreams']['Insert']
+export type DreamUpdate = Database['public']['Tables']['dreams']['Update']

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createDream, updateDream, deleteDream } from '@/lib/dreams'
 import { createClient } from '@/lib/supabase/server'
 import type { DreamInsert, DreamUpdate } from '@/types/database'
+import { fal } from "@fal-ai/client"
 
 export type NewDreamFormState = {
   error?: string
@@ -202,6 +203,10 @@ export async function generateDreamImageAction(dreamId: string): Promise<{
     return { error: 'You must be signed in to generate images.' }
   }
 
+  if (!process.env.FAL_KEY) {
+    return { error: 'Image generation service is not configured (missing FAL_KEY environment variable).' }
+  }
+
   // Fetch current dream to check count and get content for prompt
   const { data: dream, error: fetchError } = await supabase
     .from('dreams')
@@ -220,16 +225,49 @@ export async function generateDreamImageAction(dreamId: string): Promise<{
     return { error: "You've reached the regeneration limit for this dream." }
   }
 
-  // STUB: Generate image URL based on dream content.
-  // In next step, this will call Grok Imagine / image gen API.
-  // For now, use a deterministic placeholder that varies by dream for demo.
-  const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50)
-  const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200
-  const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`
+  // Build a detailed, artistic, surreal prompt based on the dream.
+  // Matches the "Artistic Night" aesthetic: dreamy, atmospheric, dark, moody, elegant.
+  const basePrompt = [
+    `A highly detailed, surreal and atmospheric night scene representing the dream titled "${dream.title || 'Untitled'}".`,
+    dream.content ? `The scene captures the essence of: ${dream.content}` : '',
+    `Style: dreamy, dark, moody, elegant, mysterious, ethereal, quiet and introspective, soft moonlight, deep shadows, intricate details, cinematic composition, high resolution, fine art photography, artistic night aesthetic, calm yet otherworldly.`
+  ].filter(Boolean).join(' ');
 
-  const newCount = currentCount + 1
+  // Configure Fal.ai client with high-quality Flux model for image generation.
+  // Image generation is powered by Fal.ai using a high-quality Flux model (fal-ai/flux/dev).
+  fal.config({
+    credentials: process.env.FAL_KEY!,
+  });
 
-  // Save to DB
+  let imageUrl: string | undefined;
+
+  try {
+    // Use high-quality Flux dev model via Fal.ai for artistic, high-res images.
+    const result = await fal.subscribe("fal-ai/flux/dev", {
+      input: {
+        prompt: basePrompt,
+        // Note: flux/dev on Fal does not expose negative_prompt in this schema; prompt engineering handles it.
+        num_inference_steps: 40,
+        guidance_scale: 3.5,
+        image_size: "landscape_16_9",
+        num_images: 1,
+      },
+      logs: false,
+    }) as any;
+
+    imageUrl = result.images?.[0]?.url;
+
+    if (!imageUrl) {
+      throw new Error('Fal.ai did not return an image URL.');
+    }
+  } catch (falError) {
+    console.error('Fal.ai image generation error:', falError);
+    return { error: 'Failed to generate image using Fal.ai. Please try again later.' };
+  }
+
+  const newCount = currentCount + 1;
+
+  // Save the generated image URL and increment the generation count in the database
   const { error: updateError } = await supabase
     .from('dreams')
     .update({
@@ -237,12 +275,12 @@ export async function generateDreamImageAction(dreamId: string): Promise<{
       image_generation_count: newCount,
     })
     .eq('id', dreamId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.id);
 
   if (updateError) {
-    console.error('generateDreamImageAction update error:', updateError)
-    return { error: 'Failed to save the generated image. Please try again.' }
+    console.error('generateDreamImageAction update error:', updateError);
+    return { error: 'Failed to save the generated image. Please try again.' };
   }
 
-  return { imageUrl, count: newCount }
+  return { imageUrl, count: newCount };
 }
