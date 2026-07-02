@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
+/* Quiet Midnight — calm, introspective palette for Dreamthread */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Very light warm gray background */
+  --color-background: #f7f5f0;
+  --color-foreground: #1f2937;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Deep indigo / midnight blue */
+  --color-primary: #1e2a4a;
+  --color-primary-foreground: #f7f5f0;
+
+  /* Soft periwinkle / lavender */
+  --color-accent: #8a86c0;
+  --color-accent-foreground: #1e2a4a;
+
+  --color-muted: #6b7280;
+  --color-muted-foreground: #6b7280;
+
+  /* Slightly warmer card for softness */
+  --color-card: #fdfaf5;
+  --color-card-foreground: #1f2937;
+
+  --color-border: #e6e2d9;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-background: #0c0e17;
+    --color-foreground: #e5e3d9;
+
+    --color-primary: #4a5a80;
+    --color-primary-foreground: #f7f5f0;
+
+    --color-accent: #b0acd9;
+    --color-accent-foreground: #0c0e17;
+
+    --color-muted: #9aa0ae;
+    --color-muted-foreground: #9aa0ae;
+
+    --color-card: #151720;
+    --color-card-foreground: #e5e3d9;
+
+    --color-border: #2c2e3a;
   }
 }
 
+/* Tell Tailwind v4 to generate `dark:` variants using media query (matches our :root) */
+@variant dark (@media (prefers-color-scheme: dark));
+
+@theme inline {
+  /* Semantic color tokens (map CSS vars so classes like bg-primary work) */
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-border: var(--color-border);
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans);
 }
