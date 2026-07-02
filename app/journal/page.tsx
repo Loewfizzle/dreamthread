@@ -4,6 +4,43 @@ import type { Dream } from '@/lib/dreams'
 
 export const dynamic = 'force-dynamic'
 
+const formatDreamDate = (dateString: string): string => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dreamDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.floor((today.getTime() - dreamDay.getTime()) / (1000 * 3600 * 24))
+
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) {
+    return date.toLocaleDateString(undefined, { weekday: 'long' })
+  }
+
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' }
+  if (date.getFullYear() !== now.getFullYear()) {
+    opts.year = 'numeric'
+  }
+  return date.toLocaleDateString(undefined, opts)
+}
+
+const getExcerpt = (content: string): string => {
+  const text = content.trim().replace(/\s+/g, ' ')
+  if (text.length <= 135) return text
+
+  const cut = text.slice(0, 135)
+  const lastPunct = Math.max(
+    cut.lastIndexOf('.'),
+    cut.lastIndexOf('!'),
+    cut.lastIndexOf('?')
+  )
+
+  if (lastPunct > 70) {
+    return cut.slice(0, lastPunct + 1).trim()
+  }
+  return cut.trim() + '…'
+}
+
 export default async function JournalPage() {
   let dreams: Dream[] = []
   let fetchError: string | null = null
@@ -17,127 +54,90 @@ export default async function JournalPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
-      <div className="mx-auto max-w-3xl px-6 py-12">
-        {/* Header */}
-        <div className="mb-10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <span className="text-lg font-semibold tracking-tighter">D</span>
-              </div>
-              <span className="text-xl font-semibold tracking-tight text-foreground">
-                Dreamthread
-              </span>
-            </div>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tighter text-foreground">
-              Your Journal
-            </h1>
-          </div>
-
-          <Link
-            href="/journal/new"
-            className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            + New Dream
-          </Link>
-        </div>
+      <div className="mx-auto max-w-2xl px-5">
+        {/* Poetic, minimal header */}
+        <header className="pt-14 pb-9">
+          <p className="text-[10px] font-medium tracking-[4px] text-muted/70">DREAMTHREAD</p>
+          <h1 className="mt-1 text-6xl font-semibold tracking-[-2.8px] text-foreground">Journal</h1>
+          <p className="mt-4 max-w-[17rem] text-[15px] leading-snug text-muted/90">
+            The night’s quiet offerings, held gently here.
+          </p>
+        </header>
 
         {fetchError && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-            {fetchError}
+          <div className="mb-8 rounded-3xl border border-border/70 bg-card p-8 text-center">
+            <p className="text-muted">Unable to retrieve your dreams at the moment.</p>
+            <p className="mt-1 text-sm text-muted/70">Please return in a little while.</p>
           </div>
         )}
 
         {dreams.length === 0 && !fetchError ? (
-          <div className="rounded-3xl border border-border bg-card p-12 text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted/10">
-              <span className="text-2xl">🌙</span>
-            </div>
-            <h2 className="text-xl font-semibold text-foreground">
-              No dreams yet
-            </h2>
-            <p className="mt-2 text-muted">
-              Start your journal by recording your first dream.
+          <div className="flex min-h-[50vh] flex-col items-center justify-center py-12 text-center">
+            <div className="mb-8 h-px w-10 bg-border/50" />
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your journal is empty</h2>
+            <p className="mt-3 max-w-xs text-[15px] leading-relaxed text-muted/90">
+              The first dream is waiting to be remembered and recorded.
             </p>
-            <Link
-              href="/journal/new"
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted/10"
-            >
-              Record your first dream
-            </Link>
           </div>
         ) : null}
 
         {dreams.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-8 pb-24">
             {dreams.map((dream) => {
-              const date = new Date(dream.dream_date)
-              const formattedDate = date.toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })
-
-              const preview =
-                dream.content.length > 160
-                  ? dream.content.slice(0, 157) + '…'
-                  : dream.content
+              const formattedDate = formatDreamDate(dream.dream_date)
+              const excerpt = getExcerpt(dream.content)
 
               return (
-                <div
+                <article
                   key={dream.id}
-                  className="group rounded-3xl border border-border bg-card p-6 transition hover:border-primary/30"
+                  className="group rounded-3xl border border-border/60 bg-card px-7 py-8 transition-all duration-200 hover:border-border/80 hover:shadow-[0_1px_6px_rgb(0,0,0,0.03)]"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3 text-xs text-muted">
-                        <time dateTime={dream.dream_date}>{formattedDate}</time>
-                        {dream.is_lucid && (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                            Lucid
-                          </span>
-                        )}
-                        {dream.mood && (
-                          <span className="rounded-full bg-muted/10 px-2 py-0.5 text-[10px] font-medium text-muted">
-                            {dream.mood}
-                          </span>
-                        )}
-                      </div>
+                  {/* Elegant meta row */}
+                  <div className="flex items-center gap-2 text-[11px] font-medium tracking-[3px] text-muted/80">
+                    <time dateTime={dream.dream_date}>{formattedDate}</time>
 
-                      <h3 className="mt-2 line-clamp-1 text-xl font-semibold tracking-tight text-foreground group-hover:text-primary">
-                        {dream.title || 'Untitled Dream'}
+                    {dream.mood && (
+                      <>
+                        <span className="text-muted/40">·</span>
+                        <span className="font-normal tracking-normal text-accent">{dream.mood}</span>
+                      </>
+                    )}
+
+                    {dream.is_lucid && (
+                      <span className="ml-1 text-accent font-medium tracking-[1.5px]">LUCID</span>
+                    )}
+                  </div>
+
+                  {/* Title or excerpt as primary text */}
+                  {dream.title ? (
+                    <>
+                      <h3 className="mt-6 text-[21px] font-semibold tracking-[-0.35px] leading-tight text-foreground">
+                        {dream.title}
                       </h3>
-
-                      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted">
-                        {preview}
+                      <p className="mt-3 text-[14.5px] leading-[1.7] text-foreground/75 line-clamp-3">
+                        {excerpt}
                       </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between text-xs">
-                    <span className="text-muted">
-                      {dream.content.split(/\s+/).length} words
-                    </span>
-                    {/* Future: link to /journal/[id] */}
-                    <span className="text-muted transition group-hover:text-primary">
-                      View details →
-                    </span>
-                  </div>
-                </div>
+                    </>
+                  ) : (
+                    <p className="mt-6 text-[15.5px] leading-[1.7] text-foreground/80 line-clamp-4">
+                      {excerpt}
+                    </p>
+                  )}
+                </article>
               )
             })}
           </div>
         )}
-
-        <div className="mt-10 text-center">
-          <Link
-            href="/journal/new"
-            className="text-sm font-medium text-muted hover:text-foreground"
-          >
-            + Record another dream
-          </Link>
-        </div>
       </div>
+
+      {/* Beautiful minimal floating action button */}
+      <Link
+        href="/journal/new"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_16px_rgb(0,0,0,0.12)] transition-all active:scale-[0.96] hover:bg-primary/90"
+        aria-label="Record a new dream"
+      >
+        <span className="text-[26px] font-light leading-none -mt-px">+</span>
+      </Link>
     </div>
   )
 }
