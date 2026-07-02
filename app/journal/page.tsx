@@ -48,7 +48,7 @@ export default async function JournalPage() {
             <div className="mb-8 h-px w-10 bg-border/50" />
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">Sign in to see your dreams</h2>
             <p className="mt-3 max-w-xs text-[15px] leading-relaxed text-muted/90">
-              Your private journal is just a magic link from Dreamthread away.
+              Your private journal is just a magic link from DreamThread away.
             </p>
             <Link
               href="/sign-in"
