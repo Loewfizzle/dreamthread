@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState, useRef, useEffect } from 'react'
-import { createDreamAction, type NewDreamFormState } from './actions'
+import { createDreamAction, transcribeAudioAction, type NewDreamFormState } from './actions'
 
 const moodOptions = [
   { value: '', label: 'No particular mood' },
@@ -54,118 +54,137 @@ export default function NewDreamForm() {
     }
   }, [state.values])
 
-  // Voice recording state
+  // Voice recording state (using MediaRecorder + Whisper)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
-  const [liveTranscript, setLiveTranscript] = useState('')
-  const [speechSupported, setSpeechSupported] = useState(true)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [transcribeError, setTranscribeError] = useState<string | null>(null)
+  const [isVoiceSupported, setIsVoiceSupported] = useState(true)
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const recognitionRef = useRef<any>(null)
-  const liveTranscriptRef = useRef('')
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
 
-  // Check speech support on mount
+  // Check MediaRecorder support on mount
   useEffect(() => {
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    setSpeechSupported(!!SpeechRec)
+    const supported =
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices &&
+      !!navigator.mediaDevices.getUserMedia &&
+      typeof MediaRecorder !== 'undefined'
+    setIsVoiceSupported(supported)
   }, [])
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
-      if (recognitionRef.current) {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try {
-          recognitionRef.current.stop()
+          mediaRecorderRef.current.stop()
         } catch {}
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
   }, [])
 
-  const startRecording = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-    if (!SpeechRecognition) {
-      alert(
-        "Voice recording isn't supported in this browser. Please type your dream description instead."
-      )
-      return
-    }
-
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: any) => {
-      let final = ''
-      let interim = ''
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          final += transcript
-        } else {
-          interim += transcript
-        }
-      }
-      const combined = (final + interim).trim()
-      setLiveTranscript(combined)
-      liveTranscriptRef.current = combined
-    }
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event)
-      stopRecording()
-    }
-
-    recognition.onend = () => {
-      const finalText = liveTranscriptRef.current.trim()
-      if (finalText) {
-        // Append to content with nice separation for review/edit
-        const separator = content.trim() ? '\n\n' : ''
-        setContent((prev) => prev + separator + finalText)
-      }
-
-      setIsRecording(false)
-      setLiveTranscript('')
-      liveTranscriptRef.current = ''
-      setRecordingTime(0)
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      recognitionRef.current = null
-    }
+  async function startRecording() {
+    setTranscribeError(null)
 
     try {
-      recognition.start()
-      recognitionRef.current = recognition
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+
+      // Prefer a format Whisper handles well
+      const options: MediaRecorderOptions = {}
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        options.mimeType = 'audio/webm;codecs=opus'
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options.mimeType = 'audio/webm'
+      }
+
+      const recorder = new MediaRecorder(stream, options)
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || 'audio/webm',
+        })
+
+        // Cleanup stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+          streamRef.current = null
+        }
+
+        setIsRecording(false)
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
+        mediaRecorderRef.current = null
+        audioChunksRef.current = []
+
+        // Send to server for Whisper transcription
+        await handleTranscription(audioBlob)
+      }
+
+      recorder.start()
+      mediaRecorderRef.current = recorder
       setIsRecording(true)
       setRecordingTime(0)
-      setLiveTranscript('')
 
       timerRef.current = setInterval(() => {
         setRecordingTime((t) => t + 1)
       }, 1000)
     } catch (err) {
       console.error('Failed to start recording:', err)
+      setTranscribeError('Could not access microphone. Please allow microphone access and try again.')
       setIsRecording(false)
     }
   }
 
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop()
-      } catch {}
-      // onend handler will clean up state
+  function stopRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      // onstop will trigger transcription
     }
   }
 
-  const reRecord = () => {
-    // Start fresh recording (will append new transcription on stop)
-    startRecording()
+  async function handleTranscription(audioBlob: Blob) {
+    setIsTranscribing(true)
+    setTranscribeError(null)
+
+    try {
+      const formData = new FormData()
+      const file = new File([audioBlob], 'dream-recording.webm', { type: audioBlob.type })
+      formData.append('file', file)
+
+      const result = await transcribeAudioAction(formData)
+
+      if (result.error) {
+        setTranscribeError(result.error)
+      } else if (result.text) {
+        setContent((prev) => {
+          const separator = prev.trim() ? '\n\n' : ''
+          return prev + separator + result.text
+        })
+      }
+    } catch (err) {
+      console.error('Transcription error:', err)
+      setTranscribeError('Failed to transcribe audio. Please try again or type manually.')
+    } finally {
+      setIsTranscribing(false)
+    }
   }
 
   return (
@@ -202,7 +221,7 @@ export default function NewDreamForm() {
           <label className="text-sm font-medium text-foreground">
             Speak your dream <span className="text-muted">(recommended)</span>
           </label>
-          {!speechSupported && (
+          {!isVoiceSupported && (
             <span className="text-[10px] text-muted">Not supported in this browser</span>
           )}
         </div>
@@ -210,7 +229,7 @@ export default function NewDreamForm() {
         <button
           type="button"
           onClick={isRecording ? stopRecording : startRecording}
-          disabled={!speechSupported || isPending}
+          disabled={!isVoiceSupported || isPending || isTranscribing}
           className={`w-full flex items-center justify-center gap-3 rounded-3xl py-4 text-base font-medium transition-all active:scale-[0.985] disabled:opacity-60 disabled:cursor-not-allowed ${
             isRecording
               ? 'bg-red-600 text-white'
@@ -248,25 +267,32 @@ export default function NewDreamForm() {
           )}
         </button>
 
-        {/* Live feedback while recording - calm and clear */}
-        {isRecording && (
+        {/* Recording / Transcribing feedback - calm and clear */}
+        {(isRecording || isTranscribing) && (
           <div className="mt-3 rounded-2xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm">
             <div className="flex items-center gap-2 text-accent font-medium">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
               </span>
-              Listening... Speak clearly. Tap stop when done.
+              {isRecording && 'Recording audio... Speak clearly. Tap stop when done.'}
+              {isTranscribing && 'Transcribing with Whisper...'}
             </div>
-            {liveTranscript && (
-              <p className="mt-2 text-foreground/80 italic leading-relaxed line-clamp-3">
-                {liveTranscript}
-              </p>
+            {isTranscribing && (
+              <p className="mt-2 text-foreground/80 italic">This may take a few seconds.</p>
             )}
-            <p className="mt-1 text-[10px] text-muted">Transcription happens in your browser.</p>
+            <p className="mt-1 text-[10px] text-muted">
+              Audio is sent securely to OpenAI Whisper for high-quality transcription.
+            </p>
           </div>
         )}
 
+        {/* Transcription error */}
+        {transcribeError && (
+          <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300">
+            {transcribeError}
+          </div>
+        )}
       </div>
 
       {/* Content - required */}

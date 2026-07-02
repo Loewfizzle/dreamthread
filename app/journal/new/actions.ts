@@ -83,3 +83,42 @@ export async function createDreamAction(
     }
   }
 }
+
+export async function transcribeAudioAction(formData: FormData): Promise<{ text?: string; error?: string }> {
+  const file = formData.get('file') as File | null
+  if (!file) {
+    return { error: 'No audio file provided.' }
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    return { error: 'OpenAI API key is not configured on the server.' }
+  }
+
+  const openaiForm = new FormData()
+  openaiForm.append('file', file)
+  openaiForm.append('model', 'whisper-1')
+  // Optional: openaiForm.append('language', 'en')
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: openaiForm,
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Whisper API error:', errorText)
+      return { error: `Transcription failed: ${response.status} ${response.statusText}` }
+    }
+
+    const data = await response.json()
+    return { text: data.text?.trim() || '' }
+  } catch (err) {
+    console.error('Error calling Whisper API:', err)
+    return { error: 'Failed to transcribe audio. Please try again or type manually.' }
+  }
+}
