@@ -1,26 +1,303 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Quiet Midnight - calm, artistic dark palette */
+  --midnight-950: #05070f;
+  --midnight-900: #0a0c17;
+  --midnight-850: #0f121e;
+  --midnight-800: #141827;
+  --midnight-750: #171c2b;
+  --midnight-700: #1a1e2e;
+  --midnight-600: #21273a;
+  --midnight-500: #2a3048;
+  --midnight-400: #363d54;
+
+  /* Text hierarchy - soft, refined */
+  --text-50: #f1f3f9;
+  --text-100: #e0e4f0;
+  --text-200: #c3c8db;
+  --text-300: #9da3bc;
+  --text-400: #717895;
+  --text-500: #555b72;
+
+  /* Subtle accent - twilight purple, artistic and calm */
+  --accent: #7c6cf0;
+  --accent-hover: #8f81f5;
+  --accent-weak: #5f53c4;
+  --accent-faint: #2a2744;
+
+  /* Supporting */
+  --success: #4a9f7e;
+  --border: #262c42;
+  --border-strong: #323a52;
+
+  /* Card surface */
+  --card: #161a28;
+  --card-hover: #1c2132;
 }
 
+/* Tailwind theme extension for midnight colors */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: #0a0c17;
+  --color-foreground: #f1f3f9;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-midnight-950: #05070f;
+  --color-midnight-900: #0a0c17;
+  --color-midnight-850: #0f121e;
+  --color-midnight-800: #141827;
+  --color-midnight-750: #171c2b;
+  --color-midnight-700: #1a1e2e;
+  --color-midnight-600: #21273a;
+  --color-midnight-500: #2a3048;
+  --color-midnight-400: #363d54;
+
+  --color-text-50: #f1f3f9;
+  --color-text-100: #e0e4f0;
+  --color-text-200: #c3c8db;
+  --color-text-300: #9da3bc;
+  --color-text-400: #717895;
+  --color-text-500: #555b72;
+
+  --color-accent: #7c6cf0;
+  --color-accent-hover: #8f81f5;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #0a0c17;
+  color: #f1f3f9;
+  font-family: var(--font-geist-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Design System: Consistent, calm, mobile-first === */
+
+/* Refined typography */
+h1, .text-display {
+  font-feature-settings: "tnum", "cv05";
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  letter-spacing: -0.02em;
+}
+
+p, .prose {
+  line-height: 1.7;
+}
+
+/* Thumb-friendly base: min tap targets */
+button, 
+a[role="button"],
+input[type="submit"],
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* Primary button - artistic, calm */
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-3xl font-medium transition-all active:scale-[0.985] disabled:opacity-60 disabled:pointer-events-none;
+  background: var(--accent);
+  color: white;
+  padding: 14px 28px;
+  font-size: 15px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn:hover {
+  background: var(--accent-hover);
+}
+
+.btn:active {
+  background: var(--accent-weak);
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-3xl font-medium transition-all border active:scale-[0.985];
+  background: transparent;
+  color: var(--text-100);
+  border-color: var(--border-strong);
+  padding: 14px 24px;
+  font-size: 15px;
+}
+
+.btn-secondary:hover {
+  background: var(--midnight-700);
+  border-color: var(--border);
+}
+
+.btn-secondary:active {
+  background: var(--midnight-750);
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-3xl font-medium transition-colors;
+  background: transparent;
+  color: var(--text-300);
+  padding: 12px 20px;
+  font-size: 14px;
+}
+
+.btn-ghost:hover {
+  color: var(--text-100);
+  background: var(--midnight-700);
+}
+
+.btn-ghost:active {
+  background: var(--midnight-800);
+}
+
+/* Cards: rounded-3xl signature, soft depth, artistic */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px; /* rounded-3xl */
+  transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25), 
+              0 2px 4px -1px rgba(0, 0, 0, 0.15);
+}
+
+.card:hover {
+  background: var(--card-hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: scale(0.995);
+  background: var(--midnight-750);
+}
+
+/* For interactive list items */
+.card-interactive {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-faint);
+}
+
+/* Form elements - generous sizing for mobile */
+.input {
+  @apply w-full bg-midnight-800 border border-midnight-500 text-text-50 placeholder:text-text-500 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-faint);
+}
+
+.input::placeholder {
+  color: var(--text-400);
+}
+
+.label {
+  @apply block text-sm font-medium text-text-300 mb-2 tracking-wide;
+}
+
+.textarea {
+  @apply w-full bg-midnight-800 border border-midnight-500 text-text-50 placeholder:text-text-500 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none min-h-[160px] resize-y leading-relaxed;
+  line-height: 1.65;
+}
+
+/* Consistent spacing utilities for pages */
+.page {
+  @apply px-5 pb-24 pt-6 max-w-2xl mx-auto; /* generous side padding, space for bottom nav */
+}
+
+.page-narrow {
+  @apply px-5 pb-8 pt-6 max-w-md mx-auto;
+}
+
+/* Header styles */
+.page-header {
+  @apply flex items-center justify-between mb-8;
+}
+
+.page-title {
+  @apply text-3xl font-semibold tracking-[-0.03em] text-text-50;
+}
+
+/* Dream entry content styling for readability */
+.dream-content {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--text-100);
+}
+
+/* Subtle divider */
+.divider {
+  border-color: var(--border);
+}
+
+/* Tags / chips */
+.tag {
+  @apply inline-flex items-center px-3.5 py-1 rounded-2xl text-xs font-medium border;
+  background: var(--midnight-700);
+  border-color: var(--border);
+  color: var(--text-200);
+}
+
+.tag-accent {
+  background: var(--accent-faint);
+  border-color: var(--accent-weak);
+  color: var(--accent-light, #a59bf5);
+}
+
+/* Empty state - artistic and calm */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-16 px-6 text-center;
+}
+
+.empty-state-icon {
+  @apply mb-6 opacity-60;
+}
+
+/* Sign in specific */
+.auth-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+}
+
+/* Mobile safe area handling */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .bottom-nav {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  
+  .page {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Tap feedback polish */
+button:active,
+.card-interactive:active {
+  transition: transform 80ms ease, background-color 60ms ease;
+}
+
+/* Focus for accessibility without breaking calm aesthetic */
+*:focus-visible {
+  outline: 2px solid var(--accent-faint);
+  outline-offset: 2px;
+}
+
+/* Gentle list transitions */
+.dream-list {
+  @apply space-y-3;
+}
+
+/* Small detail polish */
+.moon-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  opacity: 0.6;
 }
