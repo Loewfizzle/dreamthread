@@ -179,7 +179,7 @@ export default async function DreamthreadHome() {
               >
                 Receive a magic link
               </Link>
-              <p className="mt-3 text-sm text-muted">Sign in with your email. No password needed.</p>
+              <p className="mt-3 text-sm text-muted">Sign in with a magic link from Dreamthread. No password needed.</p>
             </div>
           </div>
 

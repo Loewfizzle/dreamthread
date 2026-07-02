@@ -22,7 +22,7 @@ export default async function SignInPage() {
             </div>
           </div>
           <h1 className="text-4xl font-semibold tracking-tighter text-foreground">Welcome back</h1>
-          <p className="mt-3 text-lg text-muted">Sign in with a magic link to access your dreams.</p>
+          <p className="mt-3 text-lg text-muted">Sign in with a magic link from Dreamthread. No password needed.</p>
         </div>
 
         <SignInForm />

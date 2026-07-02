@@ -30,7 +30,7 @@ export default function SignInForm() {
     if (error) {
       setError(error.message)
     } else {
-      setMessage("Check your email for the magic link. It may take a minute to arrive.")
+      setMessage("Check your inbox — the email is from Dreamthread. It may take a minute to arrive.")
     }
     setLoading(false)
   }
@@ -40,7 +40,7 @@ export default function SignInForm() {
       <div className="bg-card border border-border rounded-3xl p-8 text-center">
         <h2 className="text-xl font-semibold tracking-tight text-foreground mb-2">Magic link sent</h2>
         <p className="text-muted mb-6">{message}</p>
-        <p className="text-sm text-muted/80">Didn't receive it? Check your spam folder or try resending below.</p>
+        <p className="text-sm text-muted/80">Didn't receive it? Check your spam or promotions folder — look for an email from Dreamthread. You can try sending another link below.</p>
         <button
           onClick={() => {
             setMessage('')
@@ -88,7 +88,7 @@ export default function SignInForm() {
       </form>
 
       <p className="mt-6 text-center text-xs text-muted">
-        We'll send you a secure, one-time link. No password required.
+        We'll send you a secure, one-time link from Dreamthread. No password required.
       </p>
     </div>
   )
