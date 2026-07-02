@@ -10,7 +10,7 @@ export default async function NewDreamPage() {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/sign-in')
+    redirect(`/sign-in?next=${encodeURIComponent('/journal/new')}`)
   }
 
   return (

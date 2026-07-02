@@ -22,7 +22,7 @@ export default async function DreamDetailPage({ params }: DreamDetailPageProps) 
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/sign-in')
+    redirect(`/sign-in?next=${encodeURIComponent(`/journal/${id}`)}`)
   }
 
   let dream: Dream | null = null

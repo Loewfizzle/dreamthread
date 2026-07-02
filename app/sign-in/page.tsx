@@ -2,14 +2,22 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import SignInForm from './SignInForm'
 
-export default async function SignInPage() {
+interface SignInPageProps {
+  searchParams: Promise<{ next?: string }>
+}
+
+export default async function SignInPage({ searchParams }: SignInPageProps) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { next } = await searchParams
+
   if (user) {
-    redirect('/journal')
+    // If already signed in, send them to the intended destination if provided
+    const destination = next && next.startsWith('/') ? next : '/journal'
+    redirect(destination)
   }
 
   return (
@@ -25,7 +33,7 @@ export default async function SignInPage() {
           <p className="mt-3 text-lg text-muted">Sign in with a magic link from DreamThread. No password needed.</p>
         </div>
 
-        <SignInForm />
+        <SignInForm next={next} />
       </div>
     </div>
   )
