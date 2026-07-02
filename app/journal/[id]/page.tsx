@@ -5,6 +5,7 @@ import type { Dream } from '@/lib/dreams'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '../SignOutButton'
 import DreamView from './DreamView'
+import { formatDreamDate } from '@/lib/dream-utils'
 
 export const dynamic = 'force-dynamic'
 
