@@ -143,7 +143,7 @@ export default function Home() {
           </div>
         </main>
 
-        <footer className="text-center pb-10 text-text-500 text-[11px] tracking-wide">
+        <footer className="text-center pb-10 text-text-400 text-[11px] tracking-wide">
           Your dreams remain only with you.
         </footer>
       </div>
@@ -156,7 +156,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-midnight-900 text-text-50">
       {/* Refined top navigation for signed-in state */}
-      <nav className="sticky top-0 z-40 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-700">
+      <nav className="sticky top-0 z-40 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Logo size="md" />
@@ -176,7 +176,7 @@ export default function Home() {
             >
               {signingOut ? 'Signing out…' : 'Sign out'}
             </button>
-            <div className="ml-1 w-7 h-7 rounded-full bg-midnight-600 flex items-center justify-center text-[10px] font-mono text-text-300 ring-1 ring-inset ring-midnight-500">
+            <div className="ml-1 w-7 h-7 rounded-full bg-midnight-700 flex items-center justify-center text-[10px] font-mono text-text-300 ring-1 ring-inset ring-midnight-500">
               {user?.email?.[0]?.toUpperCase() || '•'}
             </div>
           </div>
@@ -204,9 +204,9 @@ export default function Home() {
           href="/journal/new" 
           className="group block mb-12 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 rounded-3xl"
         >
-          <div className="card p-7 sm:p-9 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7 transition-all group-hover:border-midnight-400 group-active:scale-[0.995]">
+          <div className="card p-7 sm:p-9 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-7 transition-all group-hover:border-midnight-500 group-active:scale-[0.995]">
             <div className="flex-shrink-0">
-              <div className="w-14 h-14 rounded-2xl bg-midnight-700 flex items-center justify-center text-3xl text-accent/90 group-hover:text-accent transition-colors">
+              <div className="w-14 h-14 rounded-2xl bg-midnight-600 flex items-center justify-center text-3xl text-accent/90 group-hover:text-accent transition-colors">
                 ✧
               </div>
             </div>
@@ -252,10 +252,12 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="empty-state border border-midnight-700 bg-midnight-800/40 rounded-3xl py-14">
-              <div className="text-4xl mb-4 opacity-50">🌙</div>
-              <p className="text-text-200 font-medium mb-1">The first thread begins here.</p>
-              <p className="text-text-400 text-sm max-w-[240px] mx-auto">
+            <div className="empty-state border border-midnight-500/60 bg-midnight-700/40 rounded-3xl py-14">
+              <div className="journal-empty-art scale-75 mb-2" aria-hidden="true">
+                <div className="journal-empty-moon" />
+              </div>
+              <p className="text-text-200 font-medium mb-1 tracking-tight">The first thread begins here.</p>
+              <p className="text-text-400 text-sm max-w-[240px] mx-auto leading-relaxed">
                 Your dreams will appear in this quiet space once recorded.
               </p>
             </div>
@@ -263,7 +265,7 @@ export default function Home() {
         </div>
 
         {/* Subtle artistic footer note for logged-in homepage */}
-        <div className="mt-16 text-center text-[11px] text-text-500 tracking-widest">
+        <div className="mt-16 text-center text-[11px] text-text-400 tracking-widest">
           DREAMTHREAD · PRIVATE BY NATURE
         </div>
       </div>

@@ -76,18 +76,18 @@ export default function SignIn() {
           {/* Auth card */}
           <div className="auth-card p-7 sm:p-8">
             {/* Mode tabs */}
-            <div className="flex mb-7 bg-midnight-800 rounded-2xl p-1">
+            <div className="flex mb-7 bg-midnight-700 rounded-2xl p-1">
               <button
                 disabled={loading}
                 onClick={() => { setMode('signin'); setError(null); setMessage(null); }}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-[14px] transition-all disabled:opacity-60 ${mode === 'signin' ? 'bg-midnight-700 text-text-50 shadow-sm' : 'text-text-300 hover:text-text-200'}`}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-[14px] transition-all disabled:opacity-60 ${mode === 'signin' ? 'bg-midnight-600 text-text-50 shadow-sm' : 'text-text-300 hover:text-text-200'}`}
               >
                 Sign in
               </button>
               <button
                 disabled={loading}
                 onClick={() => { setMode('signup'); setError(null); setMessage(null); }}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-[14px] transition-all disabled:opacity-60 ${mode === 'signup' ? 'bg-midnight-700 text-text-50 shadow-sm' : 'text-text-300 hover:text-text-200'}`}
+                className={`flex-1 py-2.5 text-sm font-medium rounded-[14px] transition-all disabled:opacity-60 ${mode === 'signup' ? 'bg-midnight-600 text-text-50 shadow-sm' : 'text-text-300 hover:text-text-200'}`}
               >
                 Create account
               </button>
@@ -129,13 +129,13 @@ export default function SignIn() {
               </div>
 
               {error && (
-                <div className="text-sm text-red-400/90 bg-red-950/30 border border-red-900/40 rounded-2xl px-4 py-3">
+                <div className="text-sm text-red-400/80 bg-midnight-700 border border-red-900/30 rounded-2xl px-4 py-3">
                   {error}
                 </div>
               )}
 
               {message && (
-                <div className="text-sm text-success/90 bg-emerald-950/20 border border-emerald-900/30 rounded-2xl px-4 py-3">
+                <div className="text-sm text-success/80 bg-midnight-700 border border-emerald-900/30 rounded-2xl px-4 py-3">
                   {message}
                 </div>
               )}
@@ -158,13 +158,13 @@ export default function SignIn() {
               </button>
             </form>
 
-            <div className="mt-6 pt-5 border-t border-midnight-500 text-center text-xs text-text-400">
+            <div className="mt-6 pt-5 border-t border-midnight-400 text-center text-xs text-text-400">
               By continuing you agree to our quiet terms.<br />Your dreams remain yours.
             </div>
           </div>
 
           {/* Helpful hint for demo */}
-          <p className="text-center text-[11px] text-text-500 mt-6 tracking-wide">
+          <p className="text-center text-[11px] text-text-400 mt-6 tracking-wide">
             Use any email + password (6+ chars). Supabase will handle it.
           </p>
         </div>

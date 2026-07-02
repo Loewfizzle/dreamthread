@@ -93,7 +93,7 @@ export default function Journal() {
   return (
     <div className="min-h-screen bg-midnight-900">
       {/* Top header — refined, minimal, artistic */}
-      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-700">
+      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 flex h-16 items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Logo size="md" />
@@ -166,7 +166,7 @@ export default function Journal() {
                 className={`px-4 py-[7px] text-xs tracking-[0.5px] rounded-3xl border transition-all active:scale-[0.985] touch-target font-medium ${
                   activeFilter === f.key 
                     ? 'bg-accent text-white border-accent' 
-                    : 'bg-midnight-800/70 border-midnight-500 text-text-300 hover:bg-midnight-700 hover:text-text-100'
+                    : 'bg-midnight-700/60 border-midnight-400 text-text-300 hover:bg-midnight-600 hover:text-text-100'
                 }`}
               >
                 {f.label}
@@ -188,7 +188,7 @@ export default function Journal() {
             </div>
           </div>
         ) : loadError ? (
-          <div className="card p-7 text-center border border-midnight-500/70">
+          <div className="card p-7 text-center border border-midnight-400/60">
             <p className="text-text-200 mb-2 tracking-tight">The threads feel tangled right now.</p>
             <p className="text-sm text-text-400 mb-5 leading-relaxed">{loadError}</p>
             <button 
@@ -232,7 +232,7 @@ export default function Journal() {
         <div className="fixed bottom-6 right-6 z-40 sm:hidden">
           <Link 
             href="/journal/new"
-            className="group flex h-14 w-14 items-center justify-center rounded-full border border-midnight-500/70 bg-midnight-800/95 backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] active:scale-[0.94] transition-all hover:border-accent/60 hover:bg-midnight-700/95"
+            className="group flex h-14 w-14 items-center justify-center rounded-full border border-midnight-400/50 bg-midnight-700/90 backdrop-blur-md shadow-[0_10px_30px_-8px_rgba(0,0,0,0.55)] active:scale-[0.94] transition-all hover:border-accent/60 hover:bg-midnight-600/90"
             aria-label="Capture a new dream"
           >
             <span className="text-accent text-[26px] font-light leading-none tracking-tighter select-none transition-colors group-hover:text-accent/90">+</span>

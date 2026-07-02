@@ -1,72 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  /* Quiet Midnight - calm, artistic dark palette */
-  --midnight-950: #05070f;
-  --midnight-900: #0a0c17;
-  --midnight-850: #0f121e;
-  --midnight-800: #141827;
-  --midnight-750: #171c2b;
-  --midnight-700: #1a1e2e;
-  --midnight-600: #21273a;
-  --midnight-500: #2a3048;
-  --midnight-400: #363d54;
+  /* Darker Artistic Night - deeper, richer, calmer nighttime palette (unified with journal aesthetic) */
+  --midnight-950: #010203;
+  --midnight-900: #040507;
+  --midnight-850: #06080c;
+  --midnight-800: #080a0f;
+  --midnight-750: #0a0c13;
+  --midnight-700: #0c0f17;
+  --midnight-600: #10131b;
+  --midnight-500: #161a24;
+  --midnight-400: #1f2532;
 
-  /* Text hierarchy - soft, refined */
-  --text-50: #f1f3f9;
-  --text-100: #e0e4f0;
-  --text-200: #c3c8db;
-  --text-300: #9da3bc;
-  --text-400: #717895;
-  --text-500: #555b72;
+  /* Text hierarchy - soft, refined for deeper bg (better elegance/contrast) */
+  --text-50: #e5e7ee;
+  --text-100: #cbd0db;
+  --text-200: #a9afbe;
+  --text-300: #7a7f8e;
+  --text-400: #555a67;
+  --text-500: #41454e;
 
-  /* Subtle accent - twilight purple, artistic and calm */
+  /* Soft periwinkle accents - kept artistic and calm */
   --accent: #7c6cf0;
   --accent-hover: #8f81f5;
   --accent-weak: #5f53c4;
-  --accent-faint: #2a2744;
+  --accent-faint: #15132a;
 
   /* Supporting */
-  --success: #4a9f7e;
-  --border: #262c42;
-  --border-strong: #323a52;
+  --success: #3a8c6e;
+  --border: #0f1119;
+  --border-strong: #161a23;
 
-  /* Card surface */
-  --card: #161a28;
-  --card-hover: #1c2132;
+  /* Card surface - richer, deeper */
+  --card: #07090e;
+  --card-hover: #0b0d13;
 }
 
 /* Tailwind theme extension for midnight colors */
 @theme inline {
-  --color-background: #0a0c17;
-  --color-foreground: #f1f3f9;
+  --color-background: #040507;
+  --color-foreground: #e5e7ee;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-midnight-950: #05070f;
-  --color-midnight-900: #0a0c17;
-  --color-midnight-850: #0f121e;
-  --color-midnight-800: #141827;
-  --color-midnight-750: #171c2b;
-  --color-midnight-700: #1a1e2e;
-  --color-midnight-600: #21273a;
-  --color-midnight-500: #2a3048;
-  --color-midnight-400: #363d54;
+  --color-midnight-950: #010203;
+  --color-midnight-900: #040507;
+  --color-midnight-850: #06080c;
+  --color-midnight-800: #080a0f;
+  --color-midnight-750: #0a0c13;
+  --color-midnight-700: #0c0f17;
+  --color-midnight-600: #10131b;
+  --color-midnight-500: #161a24;
+  --color-midnight-400: #1f2532;
 
-  --color-text-50: #f1f3f9;
-  --color-text-100: #e0e4f0;
-  --color-text-200: #c3c8db;
-  --color-text-300: #9da3bc;
-  --color-text-400: #717895;
-  --color-text-500: #555b72;
+  --color-text-50: #e5e7ee;
+  --color-text-100: #cbd0db;
+  --color-text-200: #a9afbe;
+  --color-text-300: #7a7f8e;
+  --color-text-400: #555a67;
+  --color-text-500: #41454e;
 
   --color-accent: #7c6cf0;
   --color-accent-hover: #8f81f5;
 }
 
 body {
-  background: #0a0c17;
-  color: #f1f3f9;
+  background: #040507;
+  color: #e5e7ee;
   font-family: var(--font-geist-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -104,7 +104,7 @@ input[type="submit"],
   color: white;
   padding: 14px 28px;
   font-size: 15px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.25);
 }
 
 .btn:hover {
@@ -156,8 +156,8 @@ input[type="submit"],
   border: 1px solid var(--border);
   border-radius: 24px; /* rounded-3xl */
   transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25), 
-              0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 16px -3px rgba(0, 0, 0, 0.35), 
+              0 2px 4px -1px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
@@ -184,7 +184,7 @@ input[type="submit"],
 
 /* Form elements - generous sizing for mobile */
 .input {
-  @apply w-full bg-midnight-800 border border-midnight-500 text-text-50 placeholder:text-text-500 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none;
+  @apply w-full bg-midnight-700 border border-midnight-400 text-text-50 placeholder:text-text-400 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none;
 }
 
 .input:focus {
@@ -201,7 +201,7 @@ input[type="submit"],
 }
 
 .textarea {
-  @apply w-full bg-midnight-800 border border-midnight-500 text-text-50 placeholder:text-text-500 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none min-h-[160px] resize-y leading-relaxed;
+  @apply w-full bg-midnight-700 border border-midnight-400 text-text-50 placeholder:text-text-400 rounded-2xl px-5 py-4 text-[15px] transition-colors focus:outline-none min-h-[160px] resize-y leading-relaxed;
   line-height: 1.65;
 }
 
@@ -238,7 +238,7 @@ input[type="submit"],
 /* Tags / chips */
 .tag {
   @apply inline-flex items-center px-3.5 py-1 rounded-2xl text-xs font-medium border;
-  background: var(--midnight-700);
+  background: var(--midnight-600);
   border-color: var(--border);
   color: var(--text-200);
 }
@@ -274,7 +274,7 @@ input[type="submit"],
   content: '';
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(157, 163, 188, 0.18);
+  border: 1px solid rgba(122, 127, 142, 0.22);
   border-radius: 9999px;
 }
 
@@ -282,7 +282,7 @@ input[type="submit"],
   content: '';
   position: absolute;
   inset: 8px;
-  background: rgba(157, 163, 188, 0.08);
+  background: rgba(122, 127, 142, 0.07);
   border-radius: 9999px;
 }
 
@@ -292,7 +292,7 @@ input[type="submit"],
   left: 50%;
   width: 22px;
   height: 22px;
-  background: rgba(124, 108, 240, 0.45);
+  background: rgba(124, 108, 240, 0.5);
   border-radius: 9999px;
   transform: translate(-40%, -50%);
 }

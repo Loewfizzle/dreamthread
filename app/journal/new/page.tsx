@@ -40,7 +40,7 @@ export default function NewDream() {
   return (
     <div className="min-h-screen bg-midnight-900">
       {/* Consistent header */}
-      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-700">
+      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 flex h-16 items-center">
           <Link href="/journal" className="text-text-300 hover:text-text-100 flex items-center gap-2 text-sm">
             ← Back to journal
@@ -61,7 +61,7 @@ export default function NewDream() {
           />
         </div>
 
-        <p className="text-center text-xs text-text-500 mt-8 max-w-[26ch] mx-auto">
+        <p className="text-center text-xs text-text-400 mt-8 max-w-[26ch] mx-auto">
           Everything is private. You can always edit or delete later.
         </p>
       </div>

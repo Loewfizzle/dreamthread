@@ -140,7 +140,7 @@ export default function DreamDetail() {
   return (
     <div className="min-h-screen bg-midnight-900">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-700">
+      <header className="sticky top-0 z-30 bg-midnight-900/95 backdrop-blur-md border-b border-midnight-500">
         <div className="max-w-2xl mx-auto px-5 flex h-16 items-center justify-between">
           <Link href="/journal" className="text-text-300 hover:text-text-100 flex items-center gap-2 text-sm">
             ← Journal
@@ -170,7 +170,7 @@ export default function DreamDetail() {
 
       <div className="page max-w-2xl">
         {saveError && (
-          <div className="mb-4 rounded-2xl border border-red-900/40 bg-red-950/20 px-4 py-3 text-sm text-red-400/90">
+          <div className="mb-4 rounded-2xl border border-red-900/30 bg-midnight-700 px-4 py-3 text-sm text-red-400/80">
             {saveError}
           </div>
         )}
@@ -191,7 +191,7 @@ export default function DreamDetail() {
                 <span>Lucidity</span>
                 <div className="flex gap-px pl-1">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < (dream.lucidity || 3) ? 'bg-accent' : 'bg-midnight-500'}`} />
+                    <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < (dream.lucidity || 3) ? 'bg-accent' : 'bg-midnight-400'}`} />
                   ))}
                 </div>
                 <span className="text-text-400 tabular-nums">{dream.lucidity || 3}/5</span>
@@ -246,7 +246,7 @@ export default function DreamDetail() {
               )}
 
               {interpretation && (
-                <div className="card p-7 sm:p-8 border-l-2 border-accent/60 bg-midnight-750">
+                <div className="card p-7 sm:p-8 border-l-2 border-accent/60 bg-midnight-700">
                   <div className="prose text-[15px] leading-relaxed text-text-100">
                     {interpretation.split('\n\n').map((para, idx) => (
                       <p key={idx} className={idx > 0 ? 'mt-4' : ''}>{para}</p>

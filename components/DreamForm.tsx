@@ -145,7 +145,7 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
               onClick={() => setLucidity(level)}
               className={`flex-1 py-3.5 rounded-3xl text-sm font-medium border active:scale-[0.985] transition-all touch-target ${lucidity === level 
                 ? 'bg-accent border-accent text-white' 
-                : 'bg-midnight-800 border-midnight-500 text-text-200 hover:bg-midnight-700'}`}
+                : 'bg-midnight-700 border-midnight-400 text-text-200 hover:bg-midnight-600'}`}
             >
               {level}
               <div className="text-[9px] tracking-widest opacity-70 mt-px">{level === 5 ? 'FULL' : level === 1 ? 'FAINT' : ''}</div>
@@ -166,7 +166,7 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
               onClick={() => setMood(mood === m ? '' : m)}
               className={`px-4 py-2 rounded-3xl text-sm transition-all border active:scale-[0.985] ${mood === m 
                 ? 'tag-accent' 
-                : 'tag hover:bg-midnight-600'}`}
+                : 'tag hover:bg-midnight-500'}`}
             >
               {m}
             </button>

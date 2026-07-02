@@ -205,7 +205,7 @@ export default function VoiceRecorder({ onTranscribed, onError }: VoiceRecorderP
   const isRecording = state === 'recording';
 
   return (
-    <div className="border border-midnight-500 rounded-3xl p-5 bg-midnight-800/30">
+    <div className="border border-midnight-400 rounded-3xl p-5 bg-midnight-700/40">
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-sm font-medium text-text-200">Speak your dream</div>
@@ -227,17 +227,17 @@ export default function VoiceRecorder({ onTranscribed, onError }: VoiceRecorderP
         {state === 'idle' && (
           <button
             onClick={startRecording}
-            className="group flex flex-col items-center justify-center w-20 h-20 rounded-full border-2 border-accent/60 hover:border-accent active:scale-[0.96] transition-all bg-midnight-700/50"
+            className="group flex flex-col items-center justify-center w-20 h-20 rounded-full border-2 border-accent/50 hover:border-accent active:scale-[0.96] transition-all bg-midnight-600/60"
             aria-label="Start recording your dream"
           >
-            <div className="text-3xl text-accent/90 group-hover:text-accent">🎙︎</div>
+            <div className="text-3xl text-accent/90 group-hover:text-accent">⦿</div>
             <div className="text-[10px] text-text-400 mt-1 tracking-widest">RECORD</div>
           </button>
         )}
 
         {state === 'requesting' && (
           <div className="flex flex-col items-center py-3">
-            <div className="w-16 h-16 rounded-full border-2 border-accent/40 flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full border-2 border-accent/30 flex items-center justify-center">
               <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
             </div>
             <div className="text-xs text-text-400 mt-3">Waiting for microphone…</div>
@@ -248,16 +248,16 @@ export default function VoiceRecorder({ onTranscribed, onError }: VoiceRecorderP
           <div className="flex flex-col items-center">
             <button
               onClick={stopRecording}
-              className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-500/10 border-2 border-red-400/70 active:scale-95 transition-all"
+              className="relative flex items-center justify-center w-20 h-20 rounded-full bg-red-400/10 border-2 border-red-400/50 active:scale-95 transition-all"
               aria-label="Stop recording"
             >
               {/* Pulsing calm ring */}
-              <div className="absolute w-20 h-20 rounded-full border border-red-400/30 animate-[ping_1.5s_ease-in-out_infinite]" />
-              <div className="w-6 h-6 rounded-sm bg-red-400/90" />
+              <div className="absolute w-20 h-20 rounded-full border border-red-400/20 animate-[ping_1.5s_ease-in-out_infinite]" />
+              <div className="w-6 h-6 rounded-sm bg-red-400/80" />
             </button>
 
             <div className="mt-3 text-center">
-              <div className="font-mono text-xl text-red-300/90 tabular-nums tracking-[2px]">
+              <div className="font-mono text-xl text-red-300/80 tabular-nums tracking-[2px]">
                 {formatTime(duration)}
               </div>
               <div className="text-[10px] text-text-400">Recording • Tap to stop</div>
@@ -267,7 +267,7 @@ export default function VoiceRecorder({ onTranscribed, onError }: VoiceRecorderP
 
         {state === 'transcribing' && (
           <div className="w-full py-4 text-center">
-            <div className="inline-flex items-center gap-2 text-text-300">
+            <div className="inline-flex items-center gap-2 text-text-200">
               <div className="flex gap-1">
                 <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.3s]" />
                 <span className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -304,7 +304,7 @@ export default function VoiceRecorder({ onTranscribed, onError }: VoiceRecorderP
         {state === 'recorded' && transcribedPreview && (
           <div className="w-full">
             <div className="text-xs uppercase tracking-widest text-text-400 mb-1.5 px-1">Transcription ready</div>
-            <div className="card bg-midnight-750 p-4 text-sm text-text-100 leading-relaxed mb-4 max-h-[160px] overflow-auto">
+            <div className="card bg-midnight-700 p-4 text-sm text-text-100 leading-relaxed mb-4 max-h-[160px] overflow-auto">
               {transcribedPreview}
             </div>
             <div className="flex gap-3">
