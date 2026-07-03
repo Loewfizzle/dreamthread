@@ -151,6 +151,17 @@ export function computeDreamStats(dreams: Dream[], now = new Date()): DreamStats
   };
 }
 
+/**
+ * The date of the evening a night begins, in the user's timezone.
+ * Before 4am the night in progress still belongs to yesterday.
+ */
+export function nightDateFor(now: Date): string {
+  const d = new Date(now);
+  if (d.getHours() < 4) d.setDate(d.getDate() - 1);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export interface OnThisNight {
   dream: Dream;
   label: string; // "a month ago" | "six months ago" | "a year ago"

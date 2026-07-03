@@ -9,17 +9,8 @@ import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { getWeeklyReflection } from '@/app/actions/weekly-reflection';
 import { saveIntentionAction, getIntentionAction } from '@/app/actions/intentions';
-import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
+import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, nightDateFor, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
-
-// The date of the evening a night begins, in the user's timezone.
-// Before 4am the night in progress still belongs to yesterday.
-function nightDateFor(now: Date): string {
-  const d = new Date(now);
-  if (d.getHours() < 4) d.setDate(d.getDate() - 1);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 type User = { email?: string } | null;
 
