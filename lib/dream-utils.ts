@@ -151,6 +151,36 @@ export function computeDreamStats(dreams: Dream[], now = new Date()): DreamStats
   };
 }
 
+export interface OnThisNight {
+  dream: Dream;
+  label: string; // "a month ago" | "six months ago" | "a year ago"
+}
+
+/**
+ * A dream from roughly this date in the past — one month, six months,
+ * or a year ago (±2 days) — for gentle resurfacing on the homepage.
+ * Prefers the most distant anniversary; returns null when the past is
+ * still too near.
+ */
+export function findOnThisNight(dreams: Dream[], now = new Date()): OnThisNight | null {
+  const windows: Array<{ monthsBack: number; label: string }> = [
+    { monthsBack: 12, label: 'a year ago' },
+    { monthsBack: 6, label: 'six months ago' },
+    { monthsBack: 1, label: 'a month ago' },
+  ];
+
+  const dayMs = 24 * 3600 * 1000;
+  for (const w of windows) {
+    const anchor = new Date(now.getFullYear(), now.getMonth() - w.monthsBack, now.getDate()).getTime();
+    const match = dreams
+      .map(dream => ({ dream, distance: Math.abs(parseDreamDate(dream.dream_date).getTime() - anchor) }))
+      .filter(({ distance }) => distance <= 2 * dayMs)
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (match) return { dream: match.dream, label: w.label };
+  }
+  return null;
+}
+
 // "rivers, doors and light"
 function formatList(words: string[]): string {
   if (words.length === 0) return '';

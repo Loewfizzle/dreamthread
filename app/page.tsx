@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { getWeeklyReflection } from '@/app/actions/weekly-reflection';
-import { generatePoeticInsight, extractKeywords, computeDreamStats, getExcerpt, formatDreamDate, type DreamStats } from '@/lib/dream-utils';
+import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
@@ -21,6 +21,7 @@ export default function Home() {
   const [keywords, setKeywords] = useState<Array<{ word: string; count: number }>>([]);
   const [stats, setStats] = useState<DreamStats | null>(null);
   const [weeklyReflection, setWeeklyReflection] = useState<string | null>(null);
+  const [onThisNight, setOnThisNight] = useState<OnThisNight | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -34,6 +35,7 @@ export default function Home() {
       setInsight(generatePoeticInsight(dreams));
       setKeywords(extractKeywords(dreams, 6));
       setStats(computeDreamStats(dreams));
+      setOnThisNight(findOnThisNight(dreams));
 
       // Weekly AI reflection (cached server-side, one generation per week).
       // Falls back silently to the deterministic insight above.
@@ -71,6 +73,7 @@ export default function Home() {
         setKeywords([]);
         setStats(null);
         setWeeklyReflection(null);
+        setOnThisNight(null);
       }
     });
 
@@ -308,6 +311,25 @@ export default function Home() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* On this night: an old dream returns at a distance */}
+          {onThisNight && (
+            <div className="mb-8">
+              <div className="text-[10px] uppercase tracking-[1.5px] text-text-400 mb-3">On this night · {onThisNight.label}</div>
+              <Link
+                href={`/journal/${onThisNight.dream.id}`}
+                className="block card p-5 border-l-2 border-accent/40 active:scale-[0.993] focus-visible:ring-1 focus-visible:ring-accent/20"
+              >
+                <div className="font-medium text-[15px] tracking-[-0.01em] text-text-50 line-clamp-1 pr-2 mb-1">
+                  {onThisNight.dream.title || 'Untitled dream'}
+                </div>
+                <div className="text-text-300 text-xs leading-relaxed line-clamp-2 pr-1">
+                  {getExcerpt(onThisNight.dream.content, 110)}
+                </div>
+                <div className="mt-2.5 text-[11px] text-text-400">Return to this night →</div>
+              </Link>
             </div>
           )}
 
