@@ -41,8 +41,9 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims()
 
-  // Journal routes require a signed-in user
-  if (!data?.claims && request.nextUrl.pathname.startsWith('/journal')) {
+  // Journal and patterns routes require a signed-in user
+  const pathname = request.nextUrl.pathname
+  if (!data?.claims && (pathname.startsWith('/journal') || pathname.startsWith('/patterns'))) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'
     return NextResponse.redirect(url)
