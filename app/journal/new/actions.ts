@@ -1,7 +1,6 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createDream, updateDream, deleteDream } from '@/lib/dreams'
 import { createClient } from '@/lib/supabase/server'
 import type { DreamInsert, DreamUpdate } from '@/types/database'
 import { fal } from "@fal-ai/client"
@@ -101,6 +100,15 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
     return { error: 'No audio file provided.' }
   }
 
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'You must be signed in to transcribe audio.' }
+  }
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return { error: 'OpenAI API key is not configured on the server.' }
@@ -136,13 +144,18 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
 
 export async function updateDreamAction(
   id: string,
-  prevState: { error?: string; success?: boolean },
-  formData: FormData
+  input: {
+    title?: string | null
+    content: string
+    mood?: string | null
+    is_lucid?: boolean
+    tags?: string[] | null
+    dream_date?: string
+  }
 ): Promise<{ error?: string; success?: boolean }> {
-  const title = formData.get('title')?.toString().trim() ?? ''
-  const content = formData.get('content')?.toString().trim() ?? ''
-  const mood = formData.get('mood')?.toString().trim() ?? ''
-  const isLucid = formData.get('is_lucid') === 'on'
+  const title = input.title?.trim() ?? ''
+  const content = input.content?.trim() ?? ''
+  const mood = input.mood?.trim() ?? ''
 
   if (!content) {
     return { error: 'Dream content is required.' }
@@ -166,8 +179,13 @@ export async function updateDreamAction(
       title: title.length > 0 ? title : null,
       content,
       mood: mood.length > 0 ? mood : null,
-      is_lucid: isLucid,
+      is_lucid: input.is_lucid ?? false,
+      tags: input.tags ?? null,
       updated_at: new Date().toISOString(),
+    }
+
+    if (input.dream_date) {
+      updates.dream_date = input.dream_date
     }
 
     const { error: updateErr } = await supabase
@@ -281,9 +299,11 @@ export async function generateDreamImageAction(dreamId: string): Promise<{
         num_images: 1,
       },
       logs: false,
-    }) as any;
+    });
 
-    imageUrl = result.images?.[0]?.url;
+    // fal.subscribe resolves to { data, requestId }
+    const output = result.data as { images?: Array<{ url?: string }> };
+    imageUrl = output?.images?.[0]?.url;
 
     if (!imageUrl) {
       throw new Error('Fal.ai did not return an image URL.');

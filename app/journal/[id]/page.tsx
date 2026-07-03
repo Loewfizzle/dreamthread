@@ -7,15 +7,18 @@ import DreamForm from '@/components/DreamForm';
 import BottomNav from '@/components/BottomNav';
 import type { Dream } from '@/lib/dreams';
 import { loadDreams, saveDreams } from '@/lib/dreams';
+import { parseDreamDate } from '@/lib/dream-utils';
 import { createClient } from '@/lib/supabase/client';
-import { generateDreamImageAction } from '../new/actions';
+import { generateDreamImageAction, updateDreamAction, deleteDreamAction } from '../new/actions';
 
 export default function DreamDetail() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [dream, setDream] = useState<Dream | null>(null);
+  const [isDbDream, setIsDbDream] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [interpretation, setInterpretation] = useState<string | null>(null);
+  const [interpretError, setInterpretError] = useState<string | null>(null);
   const [interpreting, setInterpreting] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -26,46 +29,44 @@ export default function DreamDetail() {
   // Load the specific dream - try Supabase first, fallback to localStorage
   useEffect(() => {
     const id = params.id;
-    if (!id) {
-      setNotFound(true);
-      return;
-    }
-    const t = setTimeout(() => {
-      (async () => {
-        // Try Supabase
-        try {
-          const supabase = createClient();
-          const { data: dbDream, error } = await supabase
-            .from('dreams')
-            .select('*')
-            .eq('id', id)
-            .single();
-          if (!error && dbDream) {
-            setDream(dbDream as any as Dream);
-            return;
-          }
-        } catch (e) {
-          console.warn('Supabase load failed for detail, trying local', e);
+    let cancelled = false;
+    (async () => {
+      // Try Supabase (a missing id simply falls through to "not found")
+      try {
+        const supabase = createClient();
+        const { data: dbDream, error } = await supabase
+          .from('dreams')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (!error && dbDream && !cancelled) {
+          setDream(dbDream as Dream);
+          setIsDbDream(true);
+          return;
         }
+      } catch (e) {
+        console.warn('Supabase load failed for detail, trying local', e);
+      }
+      if (cancelled) return;
 
-        // Fallback to local
-        try {
-          const all = loadDreams();
-          const found = all.find(d => d.id === id);
-          if (found) {
-            setDream(found);
-          } else {
-            setNotFound(true);
-          }
-        } catch {
+      // Fallback to local
+      try {
+        const all = loadDreams();
+        const found = all.find(d => d.id === id);
+        if (found) {
+          setDream(found);
+          setIsDbDream(false);
+        } else {
           setNotFound(true);
         }
-      })();
-    }, 80);
-    return () => clearTimeout(t);
+      } catch {
+        setNotFound(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [params.id]);
 
-  function updateDream(updated: Dream) {
+  function updateLocalDream(updated: Dream) {
     setSaveError(null);
     try {
       const all = loadDreams();
@@ -78,25 +79,55 @@ export default function DreamDetail() {
     }
   }
 
-  function handleSaveFromForm(data: Partial<Dream>) {
+  async function handleSaveFromForm(data: Partial<Dream>) {
     if (!dream) return;
     const updatedDream: Dream = {
       ...dream,
       ...data,
     } as Dream;
-    updateDream(updatedDream);
+
+    if (!isDbDream) {
+      updateLocalDream(updatedDream);
+      return;
+    }
+
+    // DB-stored dream: persist through the server action
+    setSaveError(null);
+    const isLucid = (data.lucidity ?? 0) >= 4;
+    const result = await updateDreamAction(dream.id, {
+      title: updatedDream.title ?? null,
+      content: updatedDream.content,
+      mood: updatedDream.mood ?? null,
+      is_lucid: isLucid,
+      tags: updatedDream.tags ?? null,
+      dream_date: updatedDream.dream_date,
+    });
+
+    if (result.error) {
+      setSaveError(result.error);
+      return;
+    }
+    setDream({ ...updatedDream, is_lucid: isLucid });
+    setIsEditing(false);
   }
 
   async function deleteDream() {
     if (!dream || !confirm('Delete this dream forever?')) return;
     setDeleting(true);
     setSaveError(null);
+
+    if (isDbDream) {
+      const result = await deleteDreamAction(dream.id);
+      if (result.error) {
+        setSaveError(result.error);
+        setDeleting(false);
+        return;
+      }
+      router.push('/journal');
+      return;
+    }
+
     try {
-      // Try delete from DB too
-      try {
-        const supabase = createClient();
-        await supabase.from('dreams').delete().eq('id', dream.id);
-      } catch {}
       const all = loadDreams();
       const filtered = all.filter(d => d.id !== dream.id);
       saveDreams(filtered);
@@ -111,6 +142,7 @@ export default function DreamDetail() {
     if (!dream) return;
     setInterpreting(true);
     setInterpretation(null);
+    setInterpretError(null);
 
     try {
       const res = await fetch('/api/interpret', {
@@ -124,9 +156,13 @@ export default function DreamDetail() {
         }),
       });
       const data = await res.json();
-      setInterpretation(data.interpretation || 'The dream is still unfolding its meaning for you.');
+      if (!res.ok || data.error || !data.interpretation) {
+        setInterpretError(data.error || 'The reflection couldn’t form right now. Please try again in a moment.');
+      } else {
+        setInterpretation(data.interpretation);
+      }
     } catch {
-      setInterpretation('There is a quiet thread running through this night. Sit with the feeling it left behind.');
+      setInterpretError('We couldn’t reach the reflection service. Check your connection and try again.');
     } finally {
       setInterpreting(false);
     }
@@ -141,46 +177,27 @@ export default function DreamDetail() {
       return;
     }
 
+    if (!isDbDream) {
+      setImageError('Image generation is only available for dreams saved to your account.');
+      return;
+    }
+
     setGeneratingImage(true);
     setImageError(null);
 
     try {
-      // Prefer real server action (works if dream is in DB)
       const result = await generateDreamImageAction(dream.id);
       if (result.error) {
-        if (result.error.includes('limit') || result.error.includes('not found')) {
-          // Fallback to local stub generation for locally-stored dreams
-          const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50);
-          const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200;
-          const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`;
-          const updatedDream: Dream = {
-            ...dream,
-            image_url: imageUrl,
-            image_generation_count: currentCount + 1,
-          } as Dream;
-          updateDream(updatedDream);
-        } else {
-          setImageError(result.error);
-        }
+        setImageError(result.error);
       } else if (result.imageUrl) {
-        const updatedDream: Dream = {
+        setDream({
           ...dream,
           image_url: result.imageUrl,
           image_generation_count: result.count ?? currentCount + 1,
-        } as Dream;
-        updateDream(updatedDream);
+        });
       }
-    } catch (e) {
-      // Fallback local
-      const contentHash = (dream.title || '') + (dream.content || '').slice(0, 50);
-      const seed = Math.abs(contentHash.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 200;
-      const imageUrl = `https://picsum.photos/id/${10 + (seed % 90)}/1024/768`;
-      const updatedDream: Dream = {
-        ...dream,
-        image_url: imageUrl,
-        image_generation_count: currentCount + 1,
-      } as Dream;
-      updateDream(updatedDream);
+    } catch {
+      setImageError('Failed to generate image. Please try again.');
     } finally {
       setGeneratingImage(false);
     }
@@ -212,10 +229,11 @@ export default function DreamDetail() {
     );
   }
 
-  const date = new Date(dream.dream_date);
-  const formattedDate = date.toLocaleDateString('en-US', { 
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
+  const date = parseDreamDate(dream.dream_date);
+  const formattedDate = date.toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
   });
+  const isLucidDream = dream.is_lucid || (dream.lucidity ?? 0) >= 4;
 
   return (
     <div className="min-h-screen bg-midnight-900">
@@ -267,20 +285,20 @@ export default function DreamDetail() {
 
             {/* Meta row - refined (supports both local lucidity and DB is_lucid) */}
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm mb-6 text-text-300">
-              {(dream as any).is_lucid ? (
+              {isLucidDream ? (
                 <span className="text-accent font-medium tracking-wider">LUCID</span>
-              ) : (
+              ) : typeof dream.lucidity === 'number' ? (
                 <div className="flex items-center gap-2">
                   <span>Lucidity</span>
                   <div className="flex gap-px pl-1">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < ((dream as any).lucidity || 3) ? 'bg-accent' : 'bg-midnight-400'}`} />
+                      <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < (dream.lucidity ?? 0) ? 'bg-accent' : 'bg-midnight-400'}`} />
                     ))}
                   </div>
-                  <span className="text-text-400 tabular-nums">{(dream as any).lucidity || 3}/5</span>
+                  <span className="text-text-400 tabular-nums">{dream.lucidity}/5</span>
                 </div>
-              )}
-              {dream.mood && <div>Mood · <span className="text-text-100">{dream.mood}</span></div>}
+              ) : null}
+              {dream.mood && <div>Mood · <span className="text-text-100 capitalize">{dream.mood}</span></div>}
             </div>
 
             {(dream.tags || []).length > 0 && (
@@ -322,7 +340,7 @@ export default function DreamDetail() {
                         {generatingImage ? 'Regenerating…' : 'Regenerate (1 left)'}
                       </button>
                     ) : (
-                      <span className="text-text-400">You've reached the regeneration limit for this dream.</span>
+                      <span className="text-text-400">You&apos;ve reached the regeneration limit for this dream.</span>
                     )}
                   </div>
                 </div>
@@ -399,6 +417,12 @@ export default function DreamDetail() {
                 </div>
               )}
 
+              {interpretError && !interpreting && (
+                <div className="mb-3 rounded-2xl border border-red-900/30 bg-midnight-700 px-4 py-3 text-sm text-red-400/80">
+                  {interpretError}
+                </div>
+              )}
+
               {!interpretation && !interpreting && (
                 <p className="text-xs px-1 text-text-400 max-w-prose">A gentle, non-prescriptive reflection generated for you. Always take what resonates and leave the rest.</p>
               )}
@@ -411,11 +435,11 @@ export default function DreamDetail() {
               <h1 className="page-title text-2xl">Edit dream</h1>
             </div>
             <div className="card p-6 sm:p-8">
-              <DreamForm 
-                initialDream={dream} 
-                onSave={handleSaveFromForm} 
-                onCancel={() => setIsEditing(false)} 
-                isEditing 
+              <DreamForm
+                initialDream={{ ...dream, lucidity: dream.lucidity ?? (dream.is_lucid ? 5 : 3) }}
+                onSave={handleSaveFromForm}
+                onCancel={() => setIsEditing(false)}
+                isEditing
               />
             </div>
           </div>

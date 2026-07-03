@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DreamCard from '@/components/DreamCard';
 import type { Dream } from '@/lib/dreams';
+import { fetchAllDreams } from '@/lib/dreams';
+import { parseDreamDate } from '@/lib/dream-utils';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
-import { signOut } from '@/lib/supabase';
 import { createClient } from '@/lib/supabase/client';
 
 export default function Journal() {
@@ -16,46 +17,34 @@ export default function Journal() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'lucid' | 'recent'>('all');
+  // Captured on click (not in render) so the memoized filter stays pure
+  const [recentCutoff, setRecentCutoff] = useState<number | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
 
   // Load dreams from Supabase + localStorage (merged for compatibility)
   useEffect(() => {
-    const id = setTimeout(() => {
+    let cancelled = false;
+    (async () => {
       setIsLoading(true);
       setLoadError(null);
-      (async () => {
-        let combined: Dream[] = [];
-        // Always load local first (for previously stored dreams)
-        try {
-          const { loadDreams } = await import('@/lib/dreams');
-          const local = loadDreams();
-          combined = [...local];
-        } catch {}
 
-        // Then load from Supabase and merge (prefer DB if id overlap, though unlikely)
-        try {
-          const supabase = createClient();
-          const { data, error } = await supabase
-            .from('dreams')
-            .select('*')
-            .order('dream_date', { ascending: false });
-          if (!error && data) {
-            const dbIds = new Set(data.map((d: any) => d.id));
-            const localOnly = combined.filter(d => !dbIds.has(d.id));
-            combined = [...data as any as Dream[], ...localOnly];
-          }
-        } catch (e) {
-          console.warn('Supabase load failed (using local only):', e);
-          if (combined.length === 0) {
-            setLoadError('We had trouble reaching your journal (cloud). Showing local dreams.');
-          }
-        }
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!cancelled) setUserEmail(session?.user?.email ?? null);
+      } catch {}
 
-        setDreams(combined);
-        setIsLoading(false);
-      })();
-    }, 0);
-    return () => clearTimeout(id);
+      const { dreams: combined, cloudError } = await fetchAllDreams();
+      if (cancelled) return;
+
+      if (cloudError && combined.length === 0) {
+        setLoadError('We had trouble reaching your journal (cloud). Showing local dreams.');
+      }
+      setDreams(combined);
+      setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const filteredDreams = React.useMemo(() => {
@@ -74,25 +63,23 @@ export default function Journal() {
 
     // Filters
     if (activeFilter === 'lucid') {
-      result = result.filter(d => (d.lucidity || 0) >= 4);
-    } else if (activeFilter === 'recent') {
-      result.sort((a, b) => new Date(b.dream_date).getTime() - new Date(a.dream_date).getTime());
+      result = result.filter(d => d.is_lucid || (d.lucidity ?? 0) >= 4);
+    } else if (activeFilter === 'recent' && recentCutoff !== null) {
+      result = result.filter(d => parseDreamDate(d.dream_date).getTime() >= recentCutoff);
     }
 
-    // Default sort: newest dream date first
-    if (activeFilter !== 'recent') {
-      result.sort((a, b) => new Date(b.dream_date).getTime() - new Date(a.dream_date).getTime());
-    }
+    // Sort: newest dream date first
+    result.sort((a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime());
 
     return result;
-  }, [dreams, search, activeFilter]);
+  }, [dreams, search, activeFilter, recentCutoff]);
 
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
     try {
-      await signOut();
+      await createClient().auth.signOut();
       router.push('/');
     } catch {
       setSigningOut(false);
@@ -120,7 +107,9 @@ export default function Journal() {
             >
               {signingOut ? 'Leaving…' : 'Sign out'}
             </button>
-            <div className="w-6 h-6 rounded-full bg-midnight-700 ring-1 ring-inset ring-midnight-500 flex items-center justify-center text-[9px] text-text-300 font-mono">B</div>
+            <div className="w-6 h-6 rounded-full bg-midnight-700 ring-1 ring-inset ring-midnight-500 flex items-center justify-center text-[9px] text-text-300 font-mono">
+              {userEmail?.[0]?.toUpperCase() || '•'}
+            </div>
           </div>
         </div>
       </header>
@@ -173,7 +162,11 @@ export default function Journal() {
             ].map((f) => (
               <button
                 key={f.key}
-                onClick={() => setActiveFilter(f.key as 'all' | 'lucid' | 'recent')}
+                onClick={() => {
+                  const key = f.key as 'all' | 'lucid' | 'recent';
+                  setRecentCutoff(key === 'recent' ? Date.now() - 7 * 24 * 3600 * 1000 : null);
+                  setActiveFilter(key);
+                }}
                 className={`px-4 py-[7px] text-xs tracking-[0.5px] rounded-3xl border transition-all active:scale-[0.985] touch-target font-medium ${
                   activeFilter === f.key 
                     ? 'bg-accent text-white border-accent' 

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
 export default function BottomNav() {
@@ -15,7 +15,7 @@ export default function BottomNav() {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      await signOut();
+      await createClient().auth.signOut();
       router.push('/');
     } catch {
       setSigningOut(false);

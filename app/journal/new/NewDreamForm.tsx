@@ -31,50 +31,30 @@ export default function NewDreamForm() {
     initialState
   )
 
-  const values = state.values ?? {
-    title: '',
-    content: '',
-    mood: '',
-    is_lucid: false,
-  }
-
-  // Controlled form fields (for transcription insertion + error repopulation)
-  const [title, setTitle] = useState(values.title)
-  const [content, setContent] = useState(values.content)
-  const [mood, setMood] = useState(values.mood)
-  const [isLucid, setIsLucid] = useState(values.is_lucid)
-
-  // Sync with server action state (e.g. on validation error)
-  useEffect(() => {
-    if (state.values) {
-      setTitle(state.values.title || '')
-      setContent(state.values.content || '')
-      setMood(state.values.mood || '')
-      setIsLucid(state.values.is_lucid || false)
-    }
-  }, [state.values])
+  // Controlled form fields; they hold the user's input across a failed
+  // submit, so no syncing back from the server action state is needed.
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [mood, setMood] = useState('')
+  const [isLucid, setIsLucid] = useState(false)
 
   // Voice recording state (using MediaRecorder + Whisper)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [isTranscribing, setIsTranscribing] = useState(false)
   const [transcribeError, setTranscribeError] = useState<string | null>(null)
-  const [isVoiceSupported, setIsVoiceSupported] = useState(true)
+  // MediaRecorder support never changes after load; during prerender
+  // (no navigator) assume supported, matching the previous default.
+  const [isVoiceSupported] = useState(
+    () =>
+      typeof navigator === 'undefined' ||
+      (!!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined')
+  )
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
-
-  // Check MediaRecorder support on mount
-  useEffect(() => {
-    const supported =
-      typeof navigator !== 'undefined' &&
-      !!navigator.mediaDevices &&
-      !!navigator.mediaDevices.getUserMedia &&
-      typeof MediaRecorder !== 'undefined'
-    setIsVoiceSupported(supported)
-  }, [])
 
   // Cleanup on unmount
   useEffect(() => {

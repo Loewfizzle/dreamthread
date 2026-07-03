@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
-import { supabase, signOut } from '@/lib/supabase';
-import { getRecentDreams, loadDreams } from '@/lib/dreams';
-import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate } from '@/lib/dream-utils';
+import { createClient } from '@/lib/supabase/client';
+import { fetchAllDreams } from '@/lib/dreams';
+import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate, parseDreamDate } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
@@ -20,34 +20,41 @@ export default function Home() {
 
   useEffect(() => {
     let isMounted = true;
+    const supabase = createClient();
+
+    async function refreshDreams() {
+      const { dreams } = await fetchAllDreams();
+      if (!isMounted) return;
+      const sorted = [...dreams].sort(
+        (a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime()
+      );
+      setRecentDreams(sorted.slice(0, 3));
+      setInsight(generatePoeticInsight(dreams));
+      setKeywords(extractKeywords(dreams, 6));
+    }
 
     async function loadAuthAndData() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUser = session?.user ?? null;
 
-      if (isMounted) {
-        setUser(currentUser);
-        if (currentUser) {
-          const allDreams = loadDreams();
-          setRecentDreams(getRecentDreams(3));
-          setInsight(generatePoeticInsight(allDreams));
-          setKeywords(extractKeywords(allDreams, 6));
-        }
-        setLoading(false);
+      if (!isMounted) return;
+      setUser(currentUser);
+      if (currentUser) {
+        await refreshDreams();
       }
+      if (isMounted) setLoading(false);
     }
 
     loadAuthAndData();
 
-    // Listen for auth changes (sign in/out from anywhere)
+    // Listen for auth changes (sign in/out from anywhere).
+    // Supabase warns against awaiting client calls inside this callback,
+    // so data refresh is deferred to the next tick.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        const allDreams = loadDreams();
-        setRecentDreams(getRecentDreams(3));
-        setInsight(generatePoeticInsight(allDreams));
-        setKeywords(extractKeywords(allDreams, 6));
+        setTimeout(() => { void refreshDreams(); }, 0);
       } else {
         setRecentDreams([]);
         setInsight('');
@@ -67,7 +74,7 @@ export default function Home() {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      await signOut();
+      await createClient().auth.signOut();
       // listener updates the view
     } catch {
       setSigningOut(false);
@@ -131,18 +138,11 @@ export default function Home() {
 
           {/* Clear primary path to sign in — generous, thumb-friendly, artistic */}
           <div className="w-full max-w-sm flex flex-col gap-3">
-            <Link 
-              href="/sign-in" 
+            <Link
+              href="/sign-in"
               className="btn w-full justify-center text-[15.5px] py-[17px] tracking-[-0.01em] active:scale-[0.985]"
             >
               Begin your journal
-            </Link>
-
-            <Link 
-              href="/journal" 
-              className="btn-secondary w-full justify-center text-[15px] py-[17px] tracking-[-0.01em]"
-            >
-              View a shared journal
             </Link>
           </div>
 

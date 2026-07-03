@@ -62,6 +62,15 @@
 
   --color-accent: #7c6cf0;
   --color-accent-hover: #8f81f5;
+
+  /* Semantic tokens (Tailwind v4 ignores tailwind.config.ts, so these must live here) */
+  --color-primary: #7c6cf0;
+  --color-primary-foreground: #ffffff;
+  --color-card: #07090e;
+  --color-card-foreground: #cbd0db;
+  --color-border: #0f1119;
+  --color-muted: #555a67;
+  --color-muted-foreground: #7a7f8e;
 }
 
 body {

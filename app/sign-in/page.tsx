@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/Logo';
 
-export default function SignIn() {
+function SignInInner() {
+  // Support error param from callback redirect (e.g. auth failure)
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get('error');
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(urlError);
   const [message, setMessage] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,10 +24,12 @@ export default function SignIn() {
 
     try {
       const supabase = createClient();
+      // Defaults to production; set NEXT_PUBLIC_SITE_URL=http://localhost:3000 for local dev
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dreamthread.app';
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: 'https://dreamthread.app/auth/callback',
+          emailRedirectTo: `${siteUrl}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -48,17 +55,6 @@ export default function SignIn() {
     setError(null);
     // Keep the email so user can resend easily, or clear if preferred
   }
-
-  // Support error param from callback redirect (e.g. auth failure), without useSearchParams hook for build compatibility
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const err = params.get('error');
-      if (err) {
-        setError(err);
-      }
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-midnight-900 flex flex-col">
@@ -159,5 +155,14 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignIn() {
+  // useSearchParams requires a Suspense boundary for static prerendering
+  return (
+    <Suspense>
+      <SignInInner />
+    </Suspense>
   );
 }

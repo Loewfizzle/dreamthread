@@ -1,7 +1,14 @@
 import type { Dream } from './dreams';
 
+// Date-only strings ("2026-06-29") must be parsed as local time, not UTC,
+// or "Today"/"Yesterday" labels shift by a day for users west of UTC.
+export const parseDreamDate = (dateString: string): Date => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString)
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(dateString)
+}
+
 export const formatDreamDate = (dateString: string): string => {
-  const date = new Date(dateString)
+  const date = parseDreamDate(dateString)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const dreamDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())

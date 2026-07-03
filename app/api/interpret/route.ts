@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'You must be signed in to request a reflection.' }, { status: 401 });
+  }
+
   const { title, content, mood, lucidity } = await req.json();
 
   if (!content || typeof content !== 'string') {
@@ -9,9 +19,10 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ 
-      interpretation: 'In the quiet of this moment, the symbols of the library breathing and the silver ladder suggest a call to gentle self-inquiry. Notice the parts of yourself that feel submerged, and the curiosity that remains even in uncertainty. What small truth might be ready to surface if you simply sit with it?' 
-    });
+    return NextResponse.json(
+      { error: 'Reflections are not configured on this server.' },
+      { status: 503 }
+    );
   }
 
   const prompt = `You are a calm, artistic companion for dream reflection. Offer a short, poetic, non-prescriptive reflection (3-5 sentences max) on the following dream. Use soft, open language. Avoid any diagnostic or definitive claims. End with a quiet invitation.
@@ -48,13 +59,18 @@ Reflection:`;
     }
 
     const data = await res.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || 'The night holds more than words can say right now.';
+    const text = data.choices?.[0]?.message?.content?.trim();
+
+    if (!text) {
+      throw new Error('OpenAI returned an empty reflection');
+    }
 
     return NextResponse.json({ interpretation: text });
-  } catch {
-    // graceful fallback
-    return NextResponse.json({ 
-      interpretation: 'There is a quiet thread running through this night — something about returning to what you already know but see differently now. Sit with the feeling it left behind rather than chasing its story.' 
-    });
+  } catch (err) {
+    console.error('Interpret route error:', err);
+    return NextResponse.json(
+      { error: 'The reflection couldn’t form right now. Please try again in a moment.' },
+      { status: 502 }
+    );
   }
 }

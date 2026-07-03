@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import type { Dream } from '@/lib/dreams';
-import VoiceRecorder from '@/components/VoiceRecorder';
 
 interface DreamFormProps {
   initialDream?: Partial<Dream>;
@@ -102,28 +101,6 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
           <span className="text-[11px] text-text-500">Write freely</span>
         </div>
 
-        {/* Voice recording (only for new dreams) */}
-        {!isEditing && (
-          <div className="mb-4">
-            <VoiceRecorder 
-              onTranscribed={(text) => {
-                setContent(prev => {
-                  const trimmed = text.trim();
-                  if (!prev.trim()) return trimmed;
-                  // Append naturally
-                  return prev.trim().endsWith('.') || prev.trim().endsWith(',') || prev.trim().endsWith('…')
-                    ? prev.trim() + ' ' + trimmed
-                    : prev.trim() + '. ' + trimmed;
-                });
-              }}
-              onError={(msg) => {
-                // Optional: could surface globally, for now VoiceRecorder shows its own calm message
-                console.log('Voice note:', msg);
-              }}
-            />
-          </div>
-        )}
-
         <textarea
           id="content"
           value={content}
@@ -159,24 +136,28 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
       <div>
         <label className="label">How did it feel?</label>
         <div className="flex flex-wrap gap-2 mb-3">
-          {MOODS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMood(mood === m ? '' : m)}
-              className={`px-4 py-2 rounded-3xl text-sm transition-all border active:scale-[0.985] ${mood === m 
-                ? 'tag-accent' 
-                : 'tag hover:bg-midnight-500'}`}
-            >
-              {m}
-            </button>
-          ))}
+          {MOODS.map((m) => {
+            // Case-insensitive: DB dreams may store lowercase mood values
+            const selected = mood.toLowerCase() === m.toLowerCase();
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMood(selected ? '' : m)}
+                className={`px-4 py-2 rounded-3xl text-sm transition-all border active:scale-[0.985] ${selected
+                  ? 'tag-accent'
+                  : 'tag hover:bg-midnight-500'}`}
+              >
+                {m}
+              </button>
+            );
+          })}
         </div>
 
         {/* Custom mood */}
-        <input 
-          type="text" 
-          value={mood && !MOODS.includes(mood) ? mood : ''} 
+        <input
+          type="text"
+          value={mood && !MOODS.some(m => m.toLowerCase() === mood.toLowerCase()) ? mood : ''}
           onChange={(e) => setMood(e.target.value)}
           placeholder="Or write your own feeling…"
           className="input py-3 text-sm"

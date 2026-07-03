@@ -1,4 +1,6 @@
 // Source of truth for Dream type and storage helpers
+import { createClient } from '@/lib/supabase/client';
+
 export interface Dream {
   id: string;
   title?: string | null;
@@ -19,58 +21,26 @@ export interface Dream {
 
 export const STORAGE_KEY = 'dreamthread:entries';
 
-export const SAMPLE_DREAMS: Dream[] = [
-  {
-    id: 'd1',
-    title: 'The library that breathed',
-    content: 'I was walking through endless wooden shelves that gently rose and fell like they were breathing. Books whispered when I passed them. One book opened by itself and showed my childhood home, but it was underwater.',
-    dream_date: '2026-06-29',
-    tags: ['surreal', 'nostalgia'],
-    lucidity: 4,
-    mood: 'Curious',
-  },
-  {
-    id: 'd2',
-    title: 'Moon ladder',
-    content: 'Climbing a ladder made of soft silver light up into a deep violet sky. Every rung felt like stepping on quiet water. At the top, the moon was a warm lantern and I could hear the ocean from up there.',
-    dream_date: '2026-06-27',
-    tags: ['flying', 'serene'],
-    lucidity: 5,
-    mood: 'Peaceful',
-  },
-  {
-    id: 'd3',
-    title: 'Train of forgotten names',
-    content: 'A train where every passenger had my face but different ages. They were all saying names I used to know but couldn’t quite place. The windows showed cities I have never visited.',
-    dream_date: '2026-06-24',
-    tags: ['people', 'travel'],
-    lucidity: 2,
-    mood: 'Melancholy',
-  },
-];
+// Ids of demo entries that older builds seeded into localStorage.
+// Filtered out on load so they don't mix with a user's real journal.
+const LEGACY_SAMPLE_IDS = new Set(['d1', 'd2', 'd3']);
 
 export function loadDreams(): Dream[] {
-  if (typeof window === 'undefined') return SAMPLE_DREAMS;
+  if (typeof window === 'undefined') return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Dream[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(d => ({
-          ...d,
-          image_url: d.image_url ?? null,
-          image_generation_count: d.image_generation_count ?? 0,
-        }));
-      }
-    }
-    // First visit: seed samples (gracefully)
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_DREAMS));
-    } catch {}
-    return SAMPLE_DREAMS;
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as Dream[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(d => !LEGACY_SAMPLE_IDS.has(d.id))
+      .map(d => ({
+        ...d,
+        image_url: d.image_url ?? null,
+        image_generation_count: d.image_generation_count ?? 0,
+      }));
   } catch {
-    // Return samples so UI never breaks
-    return SAMPLE_DREAMS;
+    return [];
   }
 }
 
@@ -83,27 +53,26 @@ export function saveDreams(dreams: Dream[]): void {
   }
 }
 
-export function getRecentDreams(limit = 4): Dream[] {
-  const all = loadDreams();
-  return [...all]
-    .sort((a, b) => new Date(b.dream_date).getTime() - new Date(a.dream_date).getTime())
-    .slice(0, limit);
-}
-
-// Stubs to satisfy remote server actions and components (real impls live in Supabase layer)
-export async function createDream(data: any): Promise<any> {
-  // For client localStorage compatibility, we fall back to saveDreams in page flows.
-  // This stub prevents TS/build errors from the merged remote files.
-  console.warn('createDream stub called — using localStorage path in client flows');
-  return { id: `local_${Date.now()}`, ...data };
-}
-
-export async function updateDream(id: string, updates: any): Promise<any> {
-  console.warn('updateDream stub called');
-  return { id, ...updates };
-}
-
-export async function deleteDream(id: string): Promise<any> {
-  console.warn('deleteDream stub called');
-  return { success: true };
+/**
+ * Loads the user's dreams from Supabase merged with any local-only entries.
+ * Falls back to localStorage entirely when the cloud is unreachable.
+ */
+export async function fetchAllDreams(): Promise<{ dreams: Dream[]; cloudError: boolean }> {
+  const local = loadDreams();
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('dreams')
+      .select('*')
+      .order('dream_date', { ascending: false });
+    if (error) throw error;
+    const db = (data ?? []) as Dream[];
+    const dbIds = new Set(db.map(d => d.id));
+    return {
+      dreams: [...db, ...local.filter(d => !dbIds.has(d.id))],
+      cloudError: false,
+    };
+  } catch {
+    return { dreams: local, cloudError: true };
+  }
 }

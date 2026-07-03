@@ -19,9 +19,9 @@ export async function GET(request: Request) {
       const forwardedHost = request.headers.get('x-forwarded-host')
 
       // Always prefer the production domain matching the emailRedirectTo for reliability (esp. mobile)
-      const redirectBase = isLocalEnv 
-        ? origin 
-        : 'https://dreamthread.app'
+      const redirectBase = isLocalEnv
+        ? origin
+        : process.env.NEXT_PUBLIC_SITE_URL ?? 'https://dreamthread.app'
 
       // Fallback to forwardedHost if provided (for custom domains/vercel)
       const finalBase = forwardedHost && !isLocalEnv 
