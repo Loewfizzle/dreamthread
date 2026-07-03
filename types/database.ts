@@ -62,6 +62,30 @@ export type Database = {
         }
         Relationships: []
       }
+      intentions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          night_date: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          night_date: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          night_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reflections: {
         Row: {
           content: string

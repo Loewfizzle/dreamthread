@@ -8,6 +8,16 @@ import { createClient } from '@/lib/supabase/client';
 import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { getWeeklyReflection } from '@/app/actions/weekly-reflection';
+import { saveIntentionAction, getIntentionAction } from '@/app/actions/intentions';
+
+// The date of the evening a night begins, in the user's timezone.
+// Before 4am the night in progress still belongs to yesterday.
+function nightDateFor(now: Date): string {
+  const d = new Date(now);
+  if (d.getHours() < 4) d.setDate(d.getDate() - 1);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
@@ -22,6 +32,11 @@ export default function Home() {
   const [stats, setStats] = useState<DreamStats | null>(null);
   const [weeklyReflection, setWeeklyReflection] = useState<string | null>(null);
   const [onThisNight, setOnThisNight] = useState<OnThisNight | null>(null);
+  // Tonight's intention (evening hours only)
+  const [intentionNight, setIntentionNight] = useState<string | null>(null);
+  const [intention, setIntention] = useState('');
+  const [intentionHeld, setIntentionHeld] = useState(false);
+  const [savingIntention, setSavingIntention] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -42,6 +57,23 @@ export default function Home() {
       try {
         const { reflection } = await getWeeklyReflection();
         if (isMounted && reflection) setWeeklyReflection(reflection);
+      } catch {}
+
+      // In the evening, surface tonight's intention (existing or blank)
+      try {
+        const now = new Date();
+        const isEvening = now.getHours() >= 19 || now.getHours() < 4;
+        if (isEvening) {
+          const night = nightDateFor(now);
+          const { intention: existing } = await getIntentionAction(night);
+          if (isMounted) {
+            setIntentionNight(night);
+            if (existing) {
+              setIntention(existing);
+              setIntentionHeld(true);
+            }
+          }
+        }
       } catch {}
     }
 
@@ -74,6 +106,9 @@ export default function Home() {
         setStats(null);
         setWeeklyReflection(null);
         setOnThisNight(null);
+        setIntentionNight(null);
+        setIntention('');
+        setIntentionHeld(false);
       }
     });
 
@@ -231,6 +266,52 @@ export default function Home() {
             </div>
           </div>
         </Link>
+
+        {/* Tonight's intention — evening hours only */}
+        {intentionNight && (
+          <div className="mb-12 card p-6 sm:p-7">
+            <div className="text-[10px] uppercase tracking-[1.75px] text-text-400 mb-1">Tonight</div>
+            <div className="text-lg font-medium tracking-tight text-text-50 mb-3">
+              What do you want to notice tonight?
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!intention.trim() || savingIntention) return;
+                setSavingIntention(true);
+                try {
+                  const result = await saveIntentionAction(intentionNight, intention);
+                  if (!result.error) setIntentionHeld(true);
+                } catch {}
+                setSavingIntention(false);
+              }}
+              className="flex gap-2.5"
+            >
+              <input
+                type="text"
+                value={intention}
+                onChange={(e) => {
+                  setIntention(e.target.value);
+                  setIntentionHeld(false);
+                }}
+                maxLength={300}
+                placeholder="My hands… a door… the feeling of water…"
+                className="input flex-1 py-3 text-[15px]"
+                aria-label="Tonight's intention"
+              />
+              <button
+                type="submit"
+                disabled={savingIntention || !intention.trim() || intentionHeld}
+                className="btn-secondary px-5 text-sm disabled:opacity-50 whitespace-nowrap"
+              >
+                {intentionHeld ? 'Held ✓' : savingIntention ? 'Holding…' : 'Hold it'}
+              </button>
+            </form>
+            <p className="text-[11px] text-text-400 mt-2.5 px-1">
+              It will be waiting for you at tomorrow’s capture.
+            </p>
+          </div>
+        )}
 
         {/* 2. "Lately in your dreams" section — artistic, calm, insightful */}
         <div>
