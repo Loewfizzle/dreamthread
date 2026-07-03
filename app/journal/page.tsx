@@ -1,28 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DreamCard from '@/components/DreamCard';
 import type { Dream } from '@/lib/dreams';
 import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
+import { syncOutbox } from '@/lib/outbox';
+import { downloadExport } from '@/lib/export';
 import { parseDreamDate } from '@/lib/dream-utils';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/client';
 
-export default function Journal() {
+function JournalInner() {
+  // Deep links from the Patterns page arrive as /journal?q=word
+  const searchParams = useSearchParams();
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
   const [activeFilter, setActiveFilter] = useState<'all' | 'lucid' | 'recent' | 'images'>('all');
   // Captured on click (not in render) so the memoized filter stays pure
   const [recentCutoff, setRecentCutoff] = useState<number | null>(null);
   const [moodFilter, setMoodFilter] = useState<string | null>(null); // lowercase key
   const [tagFilter, setTagFilter] = useState<string | null>(null); // lowercase key
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [syncedNote, setSyncedNote] = useState<string | null>(null);
   const router = useRouter();
 
   // Load dreams from Supabase (after importing any legacy local entries)
@@ -39,6 +44,19 @@ export default function Journal() {
       } catch {}
 
       await migrateLocalDreams();
+
+      // Deliver any dreams captured offline before loading the list
+      try {
+        const synced = await syncOutbox();
+        if (synced > 0 && !cancelled) {
+          setSyncedNote(
+            synced === 1
+              ? 'A dream from your bedside was woven in.'
+              : `${synced} dreams from your bedside were woven in.`
+          );
+        }
+      } catch {}
+
       const { dreams: loaded, error } = await fetchDreams();
       if (cancelled) return;
 
@@ -166,6 +184,19 @@ export default function Journal() {
       </header>
 
       <div className="page max-w-2xl">
+        {syncedNote && (
+          <div className="mb-6 rounded-2xl border border-accent/25 bg-accent/5 px-4 py-3 text-sm text-text-200 flex items-center justify-between gap-3">
+            <span>{syncedNote}</span>
+            <button
+              onClick={() => setSyncedNote(null)}
+              className="text-text-400 hover:text-text-200 text-lg leading-none px-1"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Intentional header with breathing room */}
         <div className="page-header">
           <div>
@@ -343,6 +374,27 @@ export default function Journal() {
           </div>
         )}
 
+        {/* Your dreams are yours: take them with you anytime */}
+        {!isLoading && dreams.length > 0 && (
+          <div className="mt-14 pt-6 border-t border-midnight-500/60 flex flex-wrap items-center justify-between gap-3 text-xs text-text-400">
+            <span>Your dreams remain yours.</span>
+            <div className="flex gap-4">
+              <button
+                onClick={() => downloadExport(dreams, 'markdown')}
+                className="hover:text-text-200 underline-offset-4 hover:underline"
+              >
+                Export Markdown
+              </button>
+              <button
+                onClick={() => downloadExport(dreams, 'json')}
+                className="hover:text-text-200 underline-offset-4 hover:underline"
+              >
+                Export JSON
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Elegant floating action button — well-integrated, not generic */}
         <div className="fixed bottom-6 right-6 z-40 sm:hidden">
           <Link 
@@ -357,5 +409,14 @@ export default function Journal() {
 
       <BottomNav />
     </div>
+  );
+}
+
+export default function Journal() {
+  // useSearchParams requires a Suspense boundary for static prerendering
+  return (
+    <Suspense>
+      <JournalInner />
+    </Suspense>
   );
 }
