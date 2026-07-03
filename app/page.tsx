@@ -7,7 +7,7 @@ import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/client';
 import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
-import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate } from '@/lib/dream-utils';
+import { generatePoeticInsight, extractKeywords, computeDreamStats, getExcerpt, formatDreamDate, type DreamStats } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
@@ -18,6 +18,7 @@ export default function Home() {
   const [recentDreams, setRecentDreams] = useState<Dream[]>([]);
   const [insight, setInsight] = useState('');
   const [keywords, setKeywords] = useState<Array<{ word: string; count: number }>>([]);
+  const [stats, setStats] = useState<DreamStats | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -30,6 +31,7 @@ export default function Home() {
       setRecentDreams(dreams.slice(0, 3));
       setInsight(generatePoeticInsight(dreams));
       setKeywords(extractKeywords(dreams, 6));
+      setStats(computeDreamStats(dreams));
     }
 
     async function loadAuthAndData() {
@@ -58,6 +60,7 @@ export default function Home() {
         setRecentDreams([]);
         setInsight('');
         setKeywords([]);
+        setStats(null);
       }
     });
 
@@ -227,26 +230,56 @@ export default function Home() {
 
           {/* Gentle poetic insight */}
           {insight && (
-            <p className="text-text-200 text-[15px] leading-relaxed italic mb-7 max-w-[32ch]">
+            <p className="text-text-200 text-[15px] leading-relaxed italic mb-7 max-w-[36ch]">
               “{insight}”
             </p>
+          )}
+
+          {/* Small stat tiles — quiet, factual anchors for the reflection */}
+          {stats && stats.total > 0 && (
+            <div className="grid grid-cols-3 gap-2.5 mb-8">
+              <div className="card p-4">
+                <div className="text-[9px] uppercase tracking-[1.5px] text-text-400 mb-1.5">This month</div>
+                <div className="text-xl font-semibold tracking-[-0.02em] text-text-50 tabular-nums">
+                  {stats.nightsThisMonth}
+                </div>
+                <div className="text-[11px] text-text-400 mt-0.5">
+                  {stats.nightsThisMonth === 1 ? 'night' : 'nights'}
+                </div>
+              </div>
+              <div className="card p-4">
+                <div className="text-[9px] uppercase tracking-[1.5px] text-text-400 mb-1.5">Lucid</div>
+                <div className="text-xl font-semibold tracking-[-0.02em] text-text-50 tabular-nums">
+                  {stats.lucidCount}
+                </div>
+                <div className="text-[11px] text-text-400 mt-0.5">
+                  {stats.lucidCount > 0 ? `${Math.round(stats.lucidShare * 100)}% of dreams` : 'so far'}
+                </div>
+              </div>
+              <div className="card p-4">
+                <div className="text-[9px] uppercase tracking-[1.5px] text-text-400 mb-1.5">Most felt</div>
+                <div className="text-[17px] font-semibold tracking-[-0.02em] text-text-50 capitalize leading-snug pt-0.5">
+                  {stats.topMood ?? '—'}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Refined artistic word cloud — elegant visual accent */}
           {keywords.length > 0 && (
             <div className="mb-8">
               <div className="text-[10px] uppercase tracking-[1.5px] text-text-400 mb-2.5">Frequent threads</div>
-              <div className="flex flex-wrap gap-x-3.5 gap-y-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5">
                 {keywords.map((k, i) => {
-                  const size = Math.max(13, Math.min(23, 12 + (k.count - 1) * 2.5));
+                  const size = Math.max(13, Math.min(23, 12 + (k.count - 1) * 2));
                   const opacity = Math.min(0.95, 0.55 + (k.count - 1) * 0.08);
                   return (
-                    <span 
-                      key={i} 
-                      className="font-medium text-text-300 select-none transition-colors"
-                      style={{ 
-                        fontSize: `${size}px`, 
-                        opacity,
+                    <span
+                      key={i}
+                      className={`font-medium select-none transition-colors ${i === 0 ? 'text-accent/90' : 'text-text-300'}`}
+                      style={{
+                        fontSize: `${size}px`,
+                        opacity: i === 0 ? 1 : opacity,
                         letterSpacing: size > 18 ? '-0.01em' : '0'
                       }}
                     >
