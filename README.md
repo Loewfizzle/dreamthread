@@ -1,84 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dreamthread
 
-## Getting Started
+A calm, artistic, mobile-first dream journal. Capture dreams by voice or text the moment you wake, revisit them later, and let quiet AI features surface the threads between your nights.
 
-First, run the development server:
+**Live at [dreamthread.app](https://dreamthread.app)**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Capture** — voice recording with Whisper transcription, or plain text; installable as a PWA whose home-screen launch opens straight into recording. Dreams written offline queue locally and sync on the next visit.
+- **Journal** — search (by word or by *meaning*, via embeddings), mood/tag facets, lucid and image filters, Markdown/JSON export.
+- **Visual echoes** — an AI-generated image per dream (Fal.ai Flux), capped at two generations per dream.
+- **Reflections** — a gentle per-dream interpretation, plus one cached weekly reflection across recent dreams.
+- **Echoes** — dreams similar in meaning surface on each other's pages (pgvector).
+- **Ask your dreams** — a retrieval-grounded conversation with your own journal.
+- **Patterns & Almanac** — recall calendar, rhythms, mood distribution, and a shareable year-in-dreams review.
+- **Tonight's intention** — set an evening intention; it greets you at morning capture.
+- **Postcards** — share any dream as a canvas-rendered art card.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js (App Router) · Supabase (Postgres + Auth + RLS + pgvector) · OpenAI (Whisper, gpt-4o-mini, embeddings) · Fal.ai (Flux) · Tailwind CSS v4 · Vercel
 
-## Learn More
+## Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. `npm install`
+2. Copy `.env.example` to `.env.local` and fill in the values (Supabase URL/key, `OPENAI_API_KEY`, `FAL_KEY`; set `NEXT_PUBLIC_SITE_URL=http://localhost:3000` for local magic links, and allowlist that callback URL in Supabase Auth settings).
+3. Apply the SQL migrations in `supabase/migrations/` in order (Supabase SQL Editor or `supabase db push`).
+4. `npm run dev`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+All AI features degrade gracefully when their keys or tables are missing. Per-user daily rate limits on paid features are enforced through the append-only `usage_events` table.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Conventions
 
-## Database Schema (Dreams)
-
-The core `dreams` table + Row Level Security is defined in:
-
-- `supabase/migrations/001_create_dreams.sql` — complete SQL you can paste into the Supabase SQL Editor.
-
-### Running the migration
-1. Go to your Supabase project → SQL Editor.
-2. Copy the contents of `supabase/migrations/001_create_dreams.sql` and run it.
-3. (Recommended) After running, regenerate types if you want the absolute latest:
-   ```bash
-   npx supabase gen types typescript --project-id <ref> > types/database.ts
-   ```
-
-### TypeScript usage (strongly typed)
-
-```ts
-// Server Component / Server Action
-import { createClient } from '@/lib/supabase/server'
-import { getDreams, createDream } from '@/lib/dreams'
-import type { Dream } from '@/types/database'
-
-// Using the convenience helpers (recommended)
-const dreams: Dream[] = await getDreams({ limit: 20, search: 'flying' })
-
-// Or raw (still fully typed because createClient<Database>())
-const supabase = await createClient()
-const { data } = await supabase
-  .from('dreams')
-  .select('*')
-  .eq('is_lucid', true)
-  .order('dream_date', { ascending: false })
-```
-
-Client Components use the browser client the same way:
-
-```tsx
-'use client'
-import { createClient } from '@/lib/supabase/client'
-
-const supabase = createClient()
-```
-
-All helpers and the Supabase clients are now typed against `Database` from `types/database.ts`. RLS policies guarantee users can only ever see/modify their own dreams.
-
-See `lib/dreams.ts` for the current set of query helpers (`getDreams`, `getDream`, `createDream`, `updateDream`, `deleteDream`, etc.).
-
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Supabase is the single source of truth for dreams; localStorage is used only as a transient offline outbox.
+- Client code fetches dreams through `lib/dreams.ts` (`DREAM_COLUMNS` excludes the embedding vector).
+- Server actions live in `app/actions/` and `app/journal/new/actions.ts`; all check auth and rate limits before calling paid APIs.

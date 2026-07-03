@@ -9,6 +9,8 @@ import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { getWeeklyReflection } from '@/app/actions/weekly-reflection';
 import { saveIntentionAction, getIntentionAction } from '@/app/actions/intentions';
+import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
+import type { Dream } from '@/lib/dreams';
 
 // The date of the evening a night begins, in the user's timezone.
 // Before 4am the night in progress still belongs to yesterday.
@@ -18,8 +20,6 @@ function nightDateFor(now: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-import { generatePoeticInsight, extractKeywords, computeDreamStats, findOnThisNight, getExcerpt, formatDreamDate, type DreamStats, type OnThisNight } from '@/lib/dream-utils';
-import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
 
@@ -94,7 +94,9 @@ export default function Home() {
     // Listen for auth changes (sign in/out from anywhere).
     // Supabase warns against awaiting client calls inside this callback,
     // so data refresh is deferred to the next tick.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION duplicates what loadAuthAndData already did
+      if (event === 'INITIAL_SESSION') return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {

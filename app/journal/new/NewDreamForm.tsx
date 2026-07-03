@@ -68,11 +68,15 @@ export default function NewDreamForm({ autoStartVoice = false }: NewDreamFormPro
   const autoStartedRef = useRef(false)
 
   // Bedside launch (?capture=voice): begin recording without extra taps.
-  // Ref-guarded so it fires once; the delay lets the page settle first.
+  // The ref is only set when the timer actually fires, so a re-render
+  // (whose cleanup cancels the pending timeout) reschedules instead of
+  // silently killing the auto-start.
   useEffect(() => {
     if (!autoStartVoice || !isVoiceSupported || autoStartedRef.current) return
-    autoStartedRef.current = true
-    const t = setTimeout(() => { void startRecording() }, 400)
+    const t = setTimeout(() => {
+      autoStartedRef.current = true
+      void startRecording()
+    }, 400)
     return () => clearTimeout(t)
   })
 

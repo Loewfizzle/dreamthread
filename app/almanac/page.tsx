@@ -70,12 +70,18 @@ function computeYearStats(dreams: Dream[], year: number): YearStats {
     if (mood) seasons.push({ season, mood });
   }
 
-  // Symbols that arrived vs faded: earlier half vs later half of the year's dreams
-  const half = Math.ceil(inYear.length / 2);
-  const earlier = new Set(extractKeywords(inYear.slice(0, half), 8).map(k => k.word));
-  const later = new Set(extractKeywords(inYear.slice(half), 8).map(k => k.word));
-  const arrived = [...later].filter(w => !earlier.has(w)).slice(0, 4);
-  const faded = [...earlier].filter(w => !later.has(w)).slice(0, 4);
+  // Symbols that arrived vs faded: earlier half vs later half of the
+  // year's dreams. Below ~6 nights the halves are too thin to compare —
+  // nearly every word would "arrive" or "fade" — so skip it.
+  let arrived: string[] = [];
+  let faded: string[] = [];
+  if (inYear.length >= 6) {
+    const half = Math.ceil(inYear.length / 2);
+    const earlier = new Set(extractKeywords(inYear.slice(0, half), 8).map(k => k.word));
+    const later = new Set(extractKeywords(inYear.slice(half), 8).map(k => k.word));
+    arrived = [...later].filter(w => !earlier.has(w)).slice(0, 4);
+    faded = [...earlier].filter(w => !later.has(w)).slice(0, 4);
+  }
 
   const longestDream = inYear.reduce<Dream | null>(
     (best, d) => (!best || d.content.length > best.content.length ? d : best),

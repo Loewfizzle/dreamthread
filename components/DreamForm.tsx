@@ -2,6 +2,15 @@
 
 import React, { useState } from 'react';
 import type { Dream } from '@/lib/dreams';
+import { parseDreamDate } from '@/lib/dream-utils';
+
+// The date input needs the LOCAL date; slicing the ISO string would use
+// the UTC date and could shift dreams near midnight by a day on save.
+function toLocalDateInput(iso?: string): string {
+  const d = iso ? parseDreamDate(iso) : new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 export interface DreamFormValues {
   id?: string;
@@ -25,9 +34,7 @@ const MOODS = ['Peaceful', 'Curious', 'Joyful', 'Melancholy', 'Anxious', 'Vivid'
 export default function DreamForm({ initialDream, onSave, onCancel, isEditing = false }: DreamFormProps) {
   const [title, setTitle] = useState(initialDream?.title || '');
   const [content, setContent] = useState(initialDream?.content || '');
-  const [dreamDate, setDreamDate] = useState(
-    (initialDream?.dream_date || new Date().toISOString()).split('T')[0]
-  );
+  const [dreamDate, setDreamDate] = useState(toLocalDateInput(initialDream?.dream_date));
   const [mood, setMood] = useState(initialDream?.mood || '');
   const [isLucid, setIsLucid] = useState(initialDream?.is_lucid ?? false);
   const [tags, setTags] = useState<string[]>(initialDream?.tags || []);
@@ -62,11 +69,14 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
 
     setSaving(true);
 
+    // Store the chosen day as local NOON: a bare YYYY-MM-DD would become
+    // midnight UTC and render as the previous day west of Greenwich.
+    const [y, m, d] = dreamDate.split('-').map(Number);
     const dreamData: DreamFormValues = {
       id: initialDream?.id,
       title: title.trim() || null,
       content: content.trim(),
-      dream_date: dreamDate,
+      dream_date: new Date(y, m - 1, d, 12).toISOString(),
       mood: mood.trim() || null,
       is_lucid: isLucid,
       tags: tags.length > 0 ? tags : null,

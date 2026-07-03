@@ -84,8 +84,10 @@ export async function askDreams(
       content:
         'You are a calm, artistic companion helping someone converse with their own dream journal. Ground every answer ONLY in the dreams provided — never invent dreams or details. Reference specific nights naturally by their date (e.g. "in your dream from June 3rd"). If the provided dreams do not hold an answer, say so gently. No diagnoses, no definitive claims about what dreams "mean". Keep answers to 2–6 sentences unless asked for more.',
     },
+    // History comes from the client — clamp roles so nothing can pose
+    // as a system message
     ...history.slice(-4).map(m => ({
-      role: m.role,
+      role: m.role === 'assistant' ? 'assistant' : 'user',
       content: String(m.content).slice(0, 1000),
     })),
     {
