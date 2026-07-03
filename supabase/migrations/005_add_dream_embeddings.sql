@@ -32,6 +32,8 @@ language sql
 security invoker
 set search_path = ''
 as $$
+  -- search_path is pinned to '' for safety, so the pgvector cosine
+  -- operator must be schema-qualified via operator(extensions.<=>)
   select
     d.id,
     d.title,
@@ -39,11 +41,11 @@ as $$
     d.dream_date,
     d.mood,
     d.is_lucid,
-    1 - (d.embedding <=> query_embedding) as similarity
+    1 - (d.embedding operator(extensions.<=>) query_embedding) as similarity
   from public.dreams d
   where d.embedding is not null
     and (exclude_id is null or d.id <> exclude_id)
-  order by d.embedding <=> query_embedding
+  order by d.embedding operator(extensions.<=>) query_embedding
   limit match_count;
 $$;
 
