@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
-export type UsageKind = 'image_generation' | 'interpretation' | 'transcription'
+export type UsageKind = 'image_generation' | 'interpretation' | 'transcription' | 'ask'
 
 // Per-user allowance within a rolling 24h window. Generous for normal
 // journaling; they exist to bound API spend if an account is abused.
@@ -9,6 +9,7 @@ export const DAILY_LIMITS: Record<UsageKind, number> = {
   image_generation: 15,
   interpretation: 30,
   transcription: 60,
+  ask: 30,
 }
 
 /**

@@ -24,6 +24,10 @@ export default function BottomNav() {
           <span className="text-xl mb-px">✦</span>
           <span className="text-[10px] tracking-widest">NEW</span>
         </Link>
+        <Link href="/ask" className={itemClass('/ask')}>
+          <span className="text-xl mb-px">✶</span>
+          <span className="text-[10px] tracking-widest">ASK</span>
+        </Link>
         <Link href="/patterns" className={itemClass('/patterns')}>
           <span className="text-xl mb-px">◐</span>
           <span className="text-[10px] tracking-widest">PATTERNS</span>
