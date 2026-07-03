@@ -9,6 +9,7 @@ import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { syncOutbox } from '@/lib/outbox';
 import { downloadExport } from '@/lib/export';
+import { semanticSearchAction, backfillEmbeddingsAction } from '@/app/actions/echoes';
 import { parseDreamDate } from '@/lib/dream-utils';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
@@ -28,6 +29,9 @@ function JournalInner() {
   const [tagFilter, setTagFilter] = useState<string | null>(null); // lowercase key
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [syncedNote, setSyncedNote] = useState<string | null>(null);
+  // Semantic search: ordered dream ids from the meaning match, or null
+  const [meaningIds, setMeaningIds] = useState<string[] | null>(null);
+  const [meaningLoading, setMeaningLoading] = useState(false);
   const router = useRouter();
 
   // Load dreams from Supabase (after importing any legacy local entries)
@@ -65,9 +69,25 @@ function JournalInner() {
       }
       setDreams(loaded);
       setIsLoading(false);
+
+      // Quietly embed dreams that predate the Echoes feature
+      void backfillEmbeddingsAction().catch(() => {});
     })();
     return () => { cancelled = true; };
   }, []);
+
+  async function searchByMeaning() {
+    if (!search.trim() || meaningLoading) return;
+    setMeaningLoading(true);
+    try {
+      const { ids } = await semanticSearchAction(search);
+      setMeaningIds(ids ?? []);
+    } catch {
+      setMeaningIds(null);
+    } finally {
+      setMeaningLoading(false);
+    }
+  }
 
   // Facets derived from the loaded dreams (lowercase keys, most frequent first)
   const moodOptions = React.useMemo(() => {
@@ -97,9 +117,14 @@ function JournalInner() {
 
   const filteredDreams = React.useMemo(() => {
     let result = [...dreams];
+    let keepMeaningOrder = false;
 
-    // Search
-    if (search.trim()) {
+    if (meaningIds) {
+      // Meaning search replaces the substring match, ordered by similarity
+      const byId = new Map(dreams.map(d => [d.id, d]));
+      result = meaningIds.map(id => byId.get(id)).filter((d): d is Dream => !!d);
+      keepMeaningOrder = true;
+    } else if (search.trim()) {
       const q = search.toLowerCase().trim();
       result = result.filter(d =>
         (d.title || '').toLowerCase().includes(q) ||
@@ -126,14 +151,16 @@ function JournalInner() {
       result = result.filter(d => (d.tags || []).some(t => t.trim().toLowerCase() === tagFilter));
     }
 
-    // Sort: newest dream date first
-    result.sort((a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime());
+    // Sort: newest first — unless similarity ordering is in play
+    if (!keepMeaningOrder) {
+      result.sort((a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime());
+    }
 
     return result;
-  }, [dreams, search, activeFilter, recentCutoff, moodFilter, tagFilter]);
+  }, [dreams, search, activeFilter, recentCutoff, moodFilter, tagFilter, meaningIds]);
 
   const hasActiveFilters =
-    search.trim().length > 0 || activeFilter !== 'all' || moodFilter !== null || tagFilter !== null;
+    search.trim().length > 0 || activeFilter !== 'all' || moodFilter !== null || tagFilter !== null || meaningIds !== null;
 
   function clearFilters() {
     setSearch('');
@@ -141,6 +168,7 @@ function JournalInner() {
     setRecentCutoff(null);
     setMoodFilter(null);
     setTagFilter(null);
+    setMeaningIds(null);
   }
 
   const [signingOut, setSigningOut] = useState(false);
@@ -216,7 +244,10 @@ function JournalInner() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setMeaningIds(null); // typing returns to plain word search
+              }}
               placeholder="Search nights, feelings, fragments…"
               className="input pl-11 py-[15px] pr-10 text-[14.5px]"
               aria-label="Search dreams"
@@ -225,8 +256,11 @@ function JournalInner() {
               <span className="text-base leading-none">⌘</span>
             </div>
             {search && (
-              <button 
-                onClick={() => setSearch('')} 
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setMeaningIds(null);
+                }}
                 className="absolute right-3.5 top-3.5 text-text-400 hover:text-text-100 text-xl leading-none px-1"
                 aria-label="Clear search"
               >
@@ -234,6 +268,31 @@ function JournalInner() {
               </button>
             )}
           </div>
+
+          {/* Search by meaning: finds "falling" in the elevator dream */}
+          {search.trim() && (
+            <div className="flex items-center gap-3 px-1 -mt-1">
+              {meaningIds === null ? (
+                <button
+                  onClick={searchByMeaning}
+                  disabled={meaningLoading}
+                  className="text-xs text-accent/90 hover:text-accent underline-offset-4 hover:underline disabled:opacity-60"
+                >
+                  {meaningLoading ? 'Listening for echoes…' : '✧ Search by meaning'}
+                </button>
+              ) : (
+                <span className="text-xs text-text-400">
+                  Showing dreams that <span className="text-text-200">feel</span> like “{search.trim()}”
+                  <button
+                    onClick={() => setMeaningIds(null)}
+                    className="ml-2 text-text-400 hover:text-text-200 underline-offset-4 underline"
+                  >
+                    back to word search
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Elegant filter pills */}
           <div className="flex gap-2 flex-wrap items-center">

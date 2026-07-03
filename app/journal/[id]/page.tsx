@@ -6,10 +6,14 @@ import { useRouter, useParams } from 'next/navigation';
 import DreamForm from '@/components/DreamForm';
 import BottomNav from '@/components/BottomNav';
 import type { Dream } from '@/lib/dreams';
+import { DREAM_COLUMNS } from '@/lib/dreams';
 import type { DreamFormValues } from '@/components/DreamForm';
 import { parseDreamDate } from '@/lib/dream-utils';
 import { createClient } from '@/lib/supabase/client';
 import { generateDreamImageAction, updateDreamAction, deleteDreamAction } from '../new/actions';
+import { getDreamEchoes, type EchoDream } from '@/app/actions/echoes';
+import { getExcerpt, formatDreamDate } from '@/lib/dream-utils';
+import { sharePostcard } from '@/lib/postcard';
 
 export default function DreamDetail() {
   const params = useParams<{ id: string }>();
@@ -24,6 +28,9 @@ export default function DreamDetail() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [echoes, setEchoes] = useState<EchoDream[]>([]);
+  const [sharing, setSharing] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   // Load the specific dream from Supabase
   useEffect(() => {
@@ -34,12 +41,12 @@ export default function DreamDetail() {
         const supabase = createClient();
         const { data: dbDream, error } = await supabase
           .from('dreams')
-          .select('*')
+          .select(DREAM_COLUMNS)
           .eq('id', id)
           .single();
         if (cancelled) return;
         if (!error && dbDream) {
-          setDream(dbDream);
+          setDream(dbDream as Dream);
         } else {
           setNotFound(true);
         }
@@ -49,6 +56,18 @@ export default function DreamDetail() {
     })();
     return () => { cancelled = true; };
   }, [params.id]);
+
+  // Echoes: dreams similar in meaning, loaded quietly after the dream itself
+  useEffect(() => {
+    if (!dream?.id) return;
+    let cancelled = false;
+    getDreamEchoes(dream.id)
+      .then(({ echoes: found }) => {
+        if (!cancelled && found) setEchoes(found);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [dream?.id]);
 
   async function handleSaveFromForm(values: DreamFormValues) {
     if (!dream) return;
@@ -113,6 +132,16 @@ export default function DreamDetail() {
     } finally {
       setInterpreting(false);
     }
+  }
+
+  async function handleSharePostcard() {
+    if (!dream || sharing) return;
+    setSharing(true);
+    setShareNote(null);
+    const result = await sharePostcard(dream);
+    if (result === 'downloaded') setShareNote('Postcard saved to your downloads.');
+    else if (result === 'failed') setShareNote('The postcard couldn’t be made this time.');
+    setSharing(false);
   }
 
   async function handleGenerateImage() {
@@ -187,8 +216,15 @@ export default function DreamDetail() {
           <div className="flex gap-2 text-sm">
             {!isEditing && (
               <>
-                <button 
-                  onClick={() => setIsEditing(true)} 
+                <button
+                  onClick={handleSharePostcard}
+                  disabled={sharing || deleting || !dream}
+                  className="btn-ghost px-4 py-1.5 text-xs disabled:opacity-50"
+                >
+                  {sharing ? 'Weaving…' : 'Share'}
+                </button>
+                <button
+                  onClick={() => setIsEditing(true)}
                   disabled={deleting}
                   className="btn-ghost px-4 py-1.5 text-xs disabled:opacity-50"
                 >
@@ -211,6 +247,19 @@ export default function DreamDetail() {
         {saveError && (
           <div className="mb-4 rounded-2xl border border-red-900/30 bg-midnight-700 px-4 py-3 text-sm text-red-400/80">
             {saveError}
+          </div>
+        )}
+
+        {shareNote && (
+          <div className="mb-4 rounded-2xl border border-midnight-400/60 bg-midnight-700 px-4 py-3 text-sm text-text-300 flex items-center justify-between gap-3">
+            <span>{shareNote}</span>
+            <button
+              onClick={() => setShareNote(null)}
+              className="text-text-400 hover:text-text-200 text-lg leading-none px-1"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
           </div>
         )}
 
@@ -300,6 +349,33 @@ export default function DreamDetail() {
                 <div className="mt-3 text-sm text-red-400/80">{imageError}</div>
               )}
             </div>
+
+            {/* Echoes: threads to other nights, matched by meaning */}
+            {echoes.length > 0 && (
+              <div className="mt-8">
+                <div className="uppercase text-[10px] tracking-[1.5px] text-text-400 mb-3">Echoes · threads to other nights</div>
+                <div className="space-y-2.5">
+                  {echoes.map((echo) => (
+                    <Link
+                      key={echo.id}
+                      href={`/journal/${echo.id}`}
+                      className="block card p-4 active:scale-[0.993] focus-visible:ring-1 focus-visible:ring-accent/20"
+                    >
+                      <div className="flex items-center justify-between text-[11px] text-text-400 mb-1.5">
+                        <span>{formatDreamDate(echo.dream_date)}</span>
+                        {echo.mood && <span className="text-text-300 capitalize">{echo.mood}</span>}
+                      </div>
+                      <div className="font-medium text-[15px] tracking-[-0.01em] text-text-50 line-clamp-1 pr-2">
+                        {echo.title || 'Untitled dream'}
+                      </div>
+                      <div className="text-text-300 text-xs leading-relaxed line-clamp-2 mt-1 pr-1">
+                        {getExcerpt(echo.content, 100)}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Interpretation / Reflect */}
             <div className="mt-8">

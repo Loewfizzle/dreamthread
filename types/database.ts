@@ -19,6 +19,7 @@ export type Database = {
           content: string
           created_at: string
           dream_date: string
+          embedding: string | null
           id: string
           image_generation_count: number
           image_url: string | null
@@ -33,6 +34,7 @@ export type Database = {
           content: string
           created_at?: string
           dream_date?: string
+          embedding?: string | null
           id?: string
           image_generation_count?: number
           image_url?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           content?: string
           created_at?: string
           dream_date?: string
+          embedding?: string | null
           id?: string
           image_generation_count?: number
           image_url?: string | null
@@ -109,7 +112,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_dreams: {
+        Args: {
+          query_embedding: string
+          match_count?: number
+          exclude_id?: string
+        }
+        Returns: {
+          id: string
+          title: string | null
+          content: string
+          dream_date: string
+          mood: string | null
+          is_lucid: boolean
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

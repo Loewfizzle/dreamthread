@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { generateEmbedding, dreamEmbeddingText } from '@/lib/embeddings'
 import type { DreamInsert, DreamUpdate } from '@/types/database'
 import { fal } from "@fal-ai/client"
 
@@ -72,12 +73,16 @@ export async function createDreamAction(
       }
     }
 
+    // Best-effort semantic embedding (null on failure, never blocks saving)
+    const embedding = await generateEmbedding(dreamEmbeddingText(title || null, content))
+
     const dreamData: DreamInsert = {
       user_id: user.id,
       title: title.length > 0 ? title : null,
       content,
       mood: mood.length > 0 ? mood : null,
       is_lucid: isLucid,
+      embedding: embedding ? JSON.stringify(embedding) : null,
     }
 
     const { error: insertError } = await supabase
@@ -139,12 +144,15 @@ export async function createDreamDirect(input: {
       return { error: 'You must be signed in to save dreams.' }
     }
 
+    const embedding = await generateEmbedding(dreamEmbeddingText(title || null, content))
+
     const dreamData: DreamInsert = {
       user_id: user.id,
       title: title.length > 0 ? title : null,
       content,
       mood: mood.length > 0 ? mood : null,
       is_lucid: input.is_lucid ?? false,
+      embedding: embedding ? JSON.stringify(embedding) : null,
       ...(input.dream_date ? { dream_date: input.dream_date } : {}),
     }
 
@@ -255,6 +263,9 @@ export async function updateDreamAction(
       return { error: 'You must be signed in to update dreams.' }
     }
 
+    // Content may have changed, so refresh the semantic embedding too
+    const embedding = await generateEmbedding(dreamEmbeddingText(title || null, content))
+
     const updates: DreamUpdate = {
       title: title.length > 0 ? title : null,
       content,
@@ -262,6 +273,7 @@ export async function updateDreamAction(
       is_lucid: input.is_lucid ?? false,
       tags: input.tags ?? null,
       updated_at: new Date().toISOString(),
+      ...(embedding ? { embedding: JSON.stringify(embedding) } : {}),
     }
 
     if (input.dream_date) {
