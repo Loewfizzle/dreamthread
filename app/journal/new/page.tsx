@@ -1,11 +1,16 @@
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import NewDreamForm from './NewDreamForm';
 import BottomNav from '@/components/BottomNav';
 
-export default function NewDream() {
+function NewDreamInner() {
+  // The installed PWA launches with ?capture=voice for bedside recording
+  const searchParams = useSearchParams();
+  const autoStartVoice = searchParams.get('capture') === 'voice';
+
   return (
     <div className="min-h-screen bg-midnight-900">
       {/* Consistent header */}
@@ -24,7 +29,7 @@ export default function NewDream() {
         </div>
 
         <div className="card p-6 sm:p-8">
-          <NewDreamForm />
+          <NewDreamForm autoStartVoice={autoStartVoice} />
         </div>
 
         <p className="text-center text-xs text-text-400 mt-8 max-w-[26ch] mx-auto">
@@ -34,5 +39,14 @@ export default function NewDream() {
 
       <BottomNav />
     </div>
+  );
+}
+
+export default function NewDream() {
+  // useSearchParams requires a Suspense boundary for static prerendering
+  return (
+    <Suspense>
+      <NewDreamInner />
+    </Suspense>
   );
 }

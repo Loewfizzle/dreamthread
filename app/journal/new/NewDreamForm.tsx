@@ -1,7 +1,9 @@
 'use client'
 
 import { useActionState, useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { createDreamAction, transcribeAudioAction, type NewDreamFormState } from './actions'
+import { saveDraft } from '@/lib/outbox'
 
 const moodOptions = [
   { value: '', label: 'No particular mood' },
@@ -25,7 +27,12 @@ function formatTimer(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export default function NewDreamForm() {
+interface NewDreamFormProps {
+  /** When true (PWA bedside launch), voice recording starts on load. */
+  autoStartVoice?: boolean
+}
+
+export default function NewDreamForm({ autoStartVoice = false }: NewDreamFormProps) {
   const [state, formAction, isPending] = useActionState(
     createDreamAction,
     initialState
@@ -51,10 +58,23 @@ export default function NewDreamForm() {
       (!!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined')
   )
 
+  // Offline capture: the dream was queued locally instead of submitted
+  const [savedOffline, setSavedOffline] = useState(false)
+
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
+  const autoStartedRef = useRef(false)
+
+  // Bedside launch (?capture=voice): begin recording without extra taps.
+  // Ref-guarded so it fires once; the delay lets the page settle first.
+  useEffect(() => {
+    if (!autoStartVoice || !isVoiceSupported || autoStartedRef.current) return
+    autoStartedRef.current = true
+    const t = setTimeout(() => { void startRecording() }, 400)
+    return () => clearTimeout(t)
+  })
 
   // Cleanup on unmount
   useEffect(() => {
@@ -167,8 +187,59 @@ export default function NewDreamForm() {
     }
   }
 
+  // With no connection, keep the dream in the local outbox instead of
+  // losing it to a failed request; it syncs on the next online visit.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      e.preventDefault()
+      const ok = saveDraft({
+        title: title.trim(),
+        content: content.trim(),
+        mood,
+        is_lucid: isLucid,
+      })
+      if (ok) setSavedOffline(true)
+    }
+  }
+
+  if (savedOffline) {
+    return (
+      <div className="text-center py-6">
+        <div className="text-3xl mb-4">☾</div>
+        <h2 className="text-xl font-semibold tracking-tight text-foreground mb-2">
+          Kept safely on this device
+        </h2>
+        <p className="text-sm text-muted-foreground max-w-[32ch] mx-auto mb-6 leading-relaxed">
+          You’re offline right now. This dream will weave itself into your journal
+          the next time you open Dreamthread with a connection.
+        </p>
+        <div className="flex justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setSavedOffline(false)
+              setTitle('')
+              setContent('')
+              setMood('')
+              setIsLucid(false)
+            }}
+            className="rounded-2xl border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted/10"
+          >
+            Record another
+          </button>
+          <Link
+            href="/journal"
+            className="rounded-2xl bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+          >
+            To the journal
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <form action={formAction} className="space-y-8">
+    <form action={formAction} onSubmit={handleSubmit} className="space-y-8">
       {/* Error banner */}
       {state.error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300">

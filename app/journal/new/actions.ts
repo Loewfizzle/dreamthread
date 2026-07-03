@@ -107,6 +107,59 @@ export async function createDreamAction(
   }
 }
 
+/**
+ * Object-based create, used by the offline outbox sync (the form itself
+ * goes through createDreamAction/useActionState).
+ */
+export async function createDreamDirect(input: {
+  title: string
+  content: string
+  mood: string
+  is_lucid: boolean
+  dream_date?: string
+}): Promise<{ error?: string; success?: boolean }> {
+  const title = input.title?.trim() ?? ''
+  const content = input.content?.trim() ?? ''
+  const mood = input.mood?.trim() ?? ''
+
+  if (!content || content.length < 3) {
+    return { error: 'Dream content is required.' }
+  }
+  if (content.length > MAX_CONTENT_LENGTH || title.length > MAX_TITLE_LENGTH) {
+    return { error: 'This dream is too long to save.' }
+  }
+
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { error: 'You must be signed in to save dreams.' }
+    }
+
+    const dreamData: DreamInsert = {
+      user_id: user.id,
+      title: title.length > 0 ? title : null,
+      content,
+      mood: mood.length > 0 ? mood : null,
+      is_lucid: input.is_lucid ?? false,
+      ...(input.dream_date ? { dream_date: input.dream_date } : {}),
+    }
+
+    const { error: insertError } = await supabase.from('dreams').insert(dreamData)
+    if (insertError) {
+      console.error('createDreamDirect insert error:', insertError)
+      return { error: 'Failed to save your dream. Please try again.' }
+    }
+    return { success: true }
+  } catch (err) {
+    console.error('createDreamDirect error:', err)
+    return { error: 'Failed to save your dream. Please try again.' }
+  }
+}
+
 export async function transcribeAudioAction(formData: FormData): Promise<{ text?: string; error?: string }> {
   const file = formData.get('file') as File | null
   if (!file) {
