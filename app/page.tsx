@@ -7,6 +7,7 @@ import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/client';
 import { fetchDreams } from '@/lib/dreams';
 import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
+import { getWeeklyReflection } from '@/app/actions/weekly-reflection';
 import { generatePoeticInsight, extractKeywords, computeDreamStats, getExcerpt, formatDreamDate, type DreamStats } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
@@ -19,6 +20,7 @@ export default function Home() {
   const [insight, setInsight] = useState('');
   const [keywords, setKeywords] = useState<Array<{ word: string; count: number }>>([]);
   const [stats, setStats] = useState<DreamStats | null>(null);
+  const [weeklyReflection, setWeeklyReflection] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -32,6 +34,13 @@ export default function Home() {
       setInsight(generatePoeticInsight(dreams));
       setKeywords(extractKeywords(dreams, 6));
       setStats(computeDreamStats(dreams));
+
+      // Weekly AI reflection (cached server-side, one generation per week).
+      // Falls back silently to the deterministic insight above.
+      try {
+        const { reflection } = await getWeeklyReflection();
+        if (isMounted && reflection) setWeeklyReflection(reflection);
+      } catch {}
     }
 
     async function loadAuthAndData() {
@@ -61,6 +70,7 @@ export default function Home() {
         setInsight('');
         setKeywords([]);
         setStats(null);
+        setWeeklyReflection(null);
       }
     });
 
@@ -228,12 +238,22 @@ export default function Home() {
             </h2>
           </div>
 
-          {/* Gentle poetic insight */}
-          {insight && (
+          {/* The weekly thread: one AI reflection across recent nights.
+              Falls back to the local deterministic insight line. */}
+          {weeklyReflection ? (
+            <div className="card p-6 sm:p-7 border-l-2 border-accent/50 mb-8">
+              <div className="text-[10px] uppercase tracking-[1.75px] text-text-400 mb-2.5">The weekly thread</div>
+              <div className="text-[15px] leading-relaxed text-text-100">
+                {weeklyReflection.split('\n\n').map((para, idx) => (
+                  <p key={idx} className={idx > 0 ? 'mt-3' : ''}>{para}</p>
+                ))}
+              </div>
+            </div>
+          ) : insight ? (
             <p className="text-text-200 text-[15px] leading-relaxed italic mb-7 max-w-[36ch]">
               “{insight}”
             </p>
-          )}
+          ) : null}
 
           {/* Small stat tiles — quiet, factual anchors for the reflection */}
           {stats && stats.total > 0 && (

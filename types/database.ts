@@ -59,6 +59,30 @@ export type Database = {
         }
         Relationships: []
       }
+      reflections: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       usage_events: {
         Row: {
           created_at: string
