@@ -17,9 +17,12 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+const description = "A calm, artistic space to capture, revisit, and reflect on your dreams.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://dreamthread.app"),
   title: "Dreamthread",
-  description: "A calm, artistic space to capture, revisit, and reflect on your dreams.",
+  description,
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -28,6 +31,27 @@ export const metadata: Metadata = {
     capable: true,
     title: "Dreamthread",
     statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    title: "Dreamthread",
+    description,
+    url: "/",
+    siteName: "Dreamthread",
+    type: "website",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Dreamthread — a quiet place for your nights",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dreamthread",
+    description,
+    images: ["/og.png"],
   },
 };
 
