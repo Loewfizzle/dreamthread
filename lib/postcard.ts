@@ -165,22 +165,75 @@ async function renderPostcard(dream: Dream): Promise<Blob | null> {
   return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
 }
 
+export interface YearCardStats {
+  year: number;
+  nights: number;
+  lucidCount: number;
+  lucidShare: number;
+  longestStreak: number;
+  topMood: string | null;
+  topKeywords: string[];
+}
+
+function renderYearCard(stats: YearCardStats): Promise<Blob | null> {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return Promise.resolve(null);
+
+  ctx.fillStyle = COLORS.bgDeep;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = COLORS.border;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(28, 28, W - 56, H - 56);
+
+  drawCrescent(ctx, W / 2, 240, 110);
+
+  const center = (text: string, y: number) => {
+    ctx.fillText(text, (W - ctx.measureText(text).width) / 2, y);
+  };
+
+  ctx.fillStyle = COLORS.textFaint;
+  ctx.font = '500 30px system-ui, -apple-system, sans-serif';
+  center('T H E   Y E A R   I N   D R E A M S', 460);
+
+  ctx.fillStyle = COLORS.text;
+  ctx.font = '600 130px system-ui, -apple-system, sans-serif';
+  center(String(stats.year), 610);
+
+  ctx.font = '400 40px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = COLORS.textSoft;
+  let y = 750;
+  const lines = [
+    `${stats.nights} ${stats.nights === 1 ? 'night' : 'nights'} remembered`,
+    stats.lucidCount > 0
+      ? `${stats.lucidCount} lucid · ${Math.round(stats.lucidShare * 100)}% of dreams`
+      : null,
+    stats.longestStreak > 1 ? `longest streak · ${stats.longestStreak} nights` : null,
+    stats.topMood ? `most felt · ${stats.topMood}` : null,
+    stats.topKeywords.length > 0 ? `threads · ${stats.topKeywords.slice(0, 3).join(', ')}` : null,
+  ].filter((l): l is string => !!l);
+  for (const line of lines) {
+    center(line, y);
+    y += 78;
+  }
+
+  ctx.fillStyle = COLORS.textFaint;
+  ctx.font = '500 26px system-ui, -apple-system, sans-serif';
+  center('D R E A M T H R E A D', H - 84);
+
+  return new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/png'));
+}
+
 export type PostcardResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
 
-export async function sharePostcard(dream: Dream): Promise<PostcardResult> {
-  let blob: Blob | null;
-  try {
-    blob = await renderPostcard(dream);
-  } catch {
-    return 'failed';
-  }
-  if (!blob) return 'failed';
-
-  const file = new File([blob], 'dreamthread-postcard.png', { type: 'image/png' });
+async function shareBlob(blob: Blob, filename: string, title: string): Promise<PostcardResult> {
+  const file = new File([blob], filename, { type: 'image/png' });
 
   if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: dream.title || 'A dream' });
+      await navigator.share({ files: [file], title });
       return 'shared';
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return 'cancelled';
@@ -191,10 +244,32 @@ export async function sharePostcard(dream: Dream): Promise<PostcardResult> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'dreamthread-postcard.png';
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
   return 'downloaded';
+}
+
+export async function sharePostcard(dream: Dream): Promise<PostcardResult> {
+  let blob: Blob | null;
+  try {
+    blob = await renderPostcard(dream);
+  } catch {
+    return 'failed';
+  }
+  if (!blob) return 'failed';
+  return shareBlob(blob, 'dreamthread-postcard.png', dream.title || 'A dream');
+}
+
+export async function shareYearCard(stats: YearCardStats): Promise<PostcardResult> {
+  let blob: Blob | null;
+  try {
+    blob = await renderYearCard(stats);
+  } catch {
+    return 'failed';
+  }
+  if (!blob) return 'failed';
+  return shareBlob(blob, `dreamthread-${stats.year}.png`, `The year in dreams · ${stats.year}`);
 }

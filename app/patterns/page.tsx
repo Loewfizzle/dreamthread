@@ -251,6 +251,18 @@ export default function PatternsPage() {
               </div>
             )}
 
+            {/* The almanac */}
+            <Link
+              href="/almanac"
+              className="block card p-5 border-l-2 border-accent/40 active:scale-[0.993]"
+            >
+              <div className="text-[10px] uppercase tracking-[1.5px] text-text-400 mb-1">Almanac</div>
+              <div className="font-medium text-[15px] text-text-50">The year in dreams →</div>
+              <div className="text-text-300 text-xs leading-relaxed mt-1">
+                Streaks, seasons, and the threads that arrived and faded.
+              </div>
+            </Link>
+
             {/* Recurring symbols — tap to search the journal */}
             {patterns.keywords.length > 0 && (
               <div>
