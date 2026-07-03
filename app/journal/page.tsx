@@ -17,9 +17,11 @@ export default function Journal() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'lucid' | 'recent'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'lucid' | 'recent' | 'images'>('all');
   // Captured on click (not in render) so the memoized filter stays pure
   const [recentCutoff, setRecentCutoff] = useState<number | null>(null);
+  const [moodFilter, setMoodFilter] = useState<string | null>(null); // lowercase key
+  const [tagFilter, setTagFilter] = useState<string | null>(null); // lowercase key
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
 
@@ -49,6 +51,32 @@ export default function Journal() {
     return () => { cancelled = true; };
   }, []);
 
+  // Facets derived from the loaded dreams (lowercase keys, most frequent first)
+  const moodOptions = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    dreams.forEach(d => {
+      const key = d.mood?.trim().toLowerCase();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key]) => key);
+  }, [dreams]);
+
+  const tagOptions = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    dreams.forEach(d => {
+      (d.tags || []).forEach(t => {
+        const key = t.trim().toLowerCase();
+        if (key) counts[key] = (counts[key] || 0) + 1;
+      });
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 10)
+      .map(([key]) => key);
+  }, [dreams]);
+
   const filteredDreams = React.useMemo(() => {
     let result = [...dreams];
 
@@ -63,18 +91,39 @@ export default function Journal() {
       );
     }
 
-    // Filters
+    // Primary filter pill
     if (activeFilter === 'lucid') {
       result = result.filter(d => d.is_lucid);
     } else if (activeFilter === 'recent' && recentCutoff !== null) {
       result = result.filter(d => parseDreamDate(d.dream_date).getTime() >= recentCutoff);
+    } else if (activeFilter === 'images') {
+      result = result.filter(d => !!d.image_url);
+    }
+
+    // Facets
+    if (moodFilter) {
+      result = result.filter(d => d.mood?.trim().toLowerCase() === moodFilter);
+    }
+    if (tagFilter) {
+      result = result.filter(d => (d.tags || []).some(t => t.trim().toLowerCase() === tagFilter));
     }
 
     // Sort: newest dream date first
     result.sort((a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime());
 
     return result;
-  }, [dreams, search, activeFilter, recentCutoff]);
+  }, [dreams, search, activeFilter, recentCutoff, moodFilter, tagFilter]);
+
+  const hasActiveFilters =
+    search.trim().length > 0 || activeFilter !== 'all' || moodFilter !== null || tagFilter !== null;
+
+  function clearFilters() {
+    setSearch('');
+    setActiveFilter('all');
+    setRecentCutoff(null);
+    setMoodFilter(null);
+    setTagFilter(null);
+  }
 
   const [signingOut, setSigningOut] = useState(false);
 
@@ -156,29 +205,80 @@ export default function Journal() {
           </div>
 
           {/* Elegant filter pills */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             {[
               { key: 'all', label: 'All' },
               { key: 'recent', label: 'Recent' },
               { key: 'lucid', label: 'Lucid' },
+              { key: 'images', label: 'With image' },
             ].map((f) => (
               <button
                 key={f.key}
                 onClick={() => {
-                  const key = f.key as 'all' | 'lucid' | 'recent';
+                  const key = f.key as 'all' | 'lucid' | 'recent' | 'images';
                   setRecentCutoff(key === 'recent' ? Date.now() - 7 * 24 * 3600 * 1000 : null);
                   setActiveFilter(key);
                 }}
                 className={`px-4 py-[7px] text-xs tracking-[0.5px] rounded-3xl border transition-all active:scale-[0.985] touch-target font-medium ${
-                  activeFilter === f.key 
-                    ? 'bg-accent text-white border-accent' 
+                  activeFilter === f.key
+                    ? 'bg-accent text-white border-accent'
                     : 'bg-midnight-700/60 border-midnight-400 text-text-300 hover:bg-midnight-600 hover:text-text-100'
                 }`}
               >
                 {f.label}
               </button>
             ))}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-xs text-text-400 hover:text-text-200 px-2 py-1 underline-offset-4 hover:underline"
+              >
+                Clear
+              </button>
+            )}
           </div>
+
+          {/* Facets from your own dreams: moods and tags */}
+          {(moodOptions.length > 0 || tagOptions.length > 0) && (
+            <div className="space-y-3">
+              {moodOptions.length > 0 && (
+                <div>
+                  <div className="text-[9px] uppercase tracking-[1.5px] text-text-500 mb-1.5 px-1">Mood</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {moodOptions.map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setMoodFilter(moodFilter === m ? null : m)}
+                        className={`capitalize text-xs px-3.5 py-1.5 rounded-3xl border transition-all active:scale-[0.985] ${
+                          moodFilter === m ? 'tag-accent' : 'tag hover:bg-midnight-500'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {tagOptions.length > 0 && (
+                <div>
+                  <div className="text-[9px] uppercase tracking-[1.5px] text-text-500 mb-1.5 px-1">Threads</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tagOptions.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTagFilter(tagFilter === t ? null : t)}
+                        className={`text-xs px-3.5 py-1.5 rounded-3xl border transition-all active:scale-[0.985] ${
+                          tagFilter === t ? 'tag-accent' : 'tag hover:bg-midnight-500'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* List area with refined states */}
@@ -209,6 +309,15 @@ export default function Journal() {
             {filteredDreams.map((dream) => (
               <DreamCard key={dream.id} dream={dream} />
             ))}
+          </div>
+        ) : dreams.length > 0 ? (
+          /* Dreams exist, but nothing matches the current search/filters */
+          <div className="card p-8 text-center">
+            <p className="text-text-200 mb-2 tracking-tight">No nights match these threads.</p>
+            <p className="text-sm text-text-400 mb-5">Try a different word, or let the filters go.</p>
+            <button onClick={clearFilters} className="btn-secondary text-sm tracking-wide">
+              Clear filters
+            </button>
           </div>
         ) : (
           /* Significantly improved poetic empty state — minimal, artistic, welcoming */
