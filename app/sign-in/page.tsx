@@ -144,7 +144,11 @@ function SignInInner() {
             )}
 
             <div className="mt-6 pt-5 border-t border-midnight-400 text-center text-xs text-text-400">
-              By continuing you agree to our quiet terms.<br />Your dreams remain yours.
+              By continuing you agree to our{' '}
+              <Link href="/privacy" className="text-text-300 hover:text-text-100 underline underline-offset-4">
+                quiet terms
+              </Link>
+              .<br />Your dreams remain yours.
             </div>
           </div>
 

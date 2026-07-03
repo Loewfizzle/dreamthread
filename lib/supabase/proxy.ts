@@ -43,7 +43,7 @@ export async function updateSession(request: NextRequest) {
 
   // App routes require a signed-in user
   const pathname = request.nextUrl.pathname
-  const protectedPaths = ['/journal', '/patterns', '/almanac', '/ask']
+  const protectedPaths = ['/journal', '/patterns', '/almanac', '/ask', '/account']
   if (!data?.claims && protectedPaths.some(p => pathname.startsWith(p))) {
     const url = request.nextUrl.clone()
     url.pathname = '/sign-in'

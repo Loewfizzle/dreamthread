@@ -197,7 +197,9 @@ export default function Home() {
         </main>
 
         <footer className="text-center pb-10 text-text-400 text-[11px] tracking-wide">
-          Your dreams remain only with you.
+          <Link href="/privacy" className="hover:text-text-200 underline-offset-4 hover:underline">
+            Your dreams remain only with you.
+          </Link>
         </footer>
       </div>
     );

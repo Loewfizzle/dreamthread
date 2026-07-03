@@ -136,6 +136,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_account: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       match_dreams: {
         Args: {
           query_embedding: string

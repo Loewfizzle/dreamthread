@@ -204,9 +204,13 @@ function JournalInner() {
             >
               {signingOut ? 'Leaving…' : 'Sign out'}
             </button>
-            <div className="w-6 h-6 rounded-full bg-midnight-700 ring-1 ring-inset ring-midnight-500 flex items-center justify-center text-[9px] text-text-300 font-mono">
+            <Link
+              href="/account"
+              aria-label="Account settings"
+              className="w-6 h-6 rounded-full bg-midnight-700 ring-1 ring-inset ring-midnight-500 flex items-center justify-center text-[9px] text-text-300 font-mono hover:ring-accent/40 transition"
+            >
               {userEmail?.[0]?.toUpperCase() || '•'}
-            </div>
+            </Link>
           </div>
         </div>
       </header>
@@ -436,7 +440,9 @@ function JournalInner() {
         {/* Your dreams are yours: take them with you anytime */}
         {!isLoading && dreams.length > 0 && (
           <div className="mt-14 pt-6 border-t border-midnight-500/60 flex flex-wrap items-center justify-between gap-3 text-xs text-text-400">
-            <span>Your dreams remain yours.</span>
+            <Link href="/privacy" className="hover:text-text-200 underline-offset-4 hover:underline">
+              Your dreams remain yours.
+            </Link>
             <div className="flex gap-4">
               <button
                 onClick={() => downloadExport(dreams, 'markdown')}
@@ -450,6 +456,9 @@ function JournalInner() {
               >
                 Export JSON
               </button>
+              <Link href="/account" className="hover:text-text-200 underline-offset-4 hover:underline">
+                Account
+              </Link>
             </div>
           </div>
         )}
