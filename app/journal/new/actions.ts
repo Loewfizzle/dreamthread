@@ -2,8 +2,14 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { DreamInsert, DreamUpdate } from '@/types/database'
 import { fal } from "@fal-ai/client"
+
+// Bounds on user input, to keep DB rows and AI prompt costs sane
+const MAX_TITLE_LENGTH = 200
+const MAX_CONTENT_LENGTH = 20_000
+const MAX_AUDIO_BYTES = 15 * 1024 * 1024 // Whisper's own cap is 25MB
 
 export type NewDreamFormState = {
   error?: string
@@ -42,6 +48,13 @@ export async function createDreamAction(
   if (content.length < 3) {
     return {
       error: 'Dream content must be at least a few characters.',
+      values: submittedValues,
+    }
+  }
+
+  if (content.length > MAX_CONTENT_LENGTH || title.length > MAX_TITLE_LENGTH) {
+    return {
+      error: 'This dream is too long to save. Please shorten it a little.',
       values: submittedValues,
     }
   }
@@ -100,6 +113,10 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
     return { error: 'No audio file provided.' }
   }
 
+  if (file.size > MAX_AUDIO_BYTES) {
+    return { error: 'That recording is too large to transcribe. Please keep recordings under a few minutes.' }
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -107,6 +124,11 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
 
   if (!user) {
     return { error: 'You must be signed in to transcribe audio.' }
+  }
+
+  const { allowed } = await checkRateLimit(supabase, user.id, 'transcription')
+  if (!allowed) {
+    return { error: 'You’ve reached today’s transcription limit. It resets tomorrow — you can still type your dream.' }
   }
 
   const apiKey = process.env.OPENAI_API_KEY
@@ -126,6 +148,7 @@ export async function transcribeAudioAction(formData: FormData): Promise<{ text?
         Authorization: `Bearer ${apiKey}`,
       },
       body: openaiForm,
+      signal: AbortSignal.timeout(60_000),
     })
 
     if (!response.ok) {
@@ -163,6 +186,10 @@ export async function updateDreamAction(
 
   if (content.length < 3) {
     return { error: 'Dream content must be at least a few characters.' }
+  }
+
+  if (content.length > MAX_CONTENT_LENGTH || title.length > MAX_TITLE_LENGTH) {
+    return { error: 'This dream is too long to save. Please shorten it a little.' }
   }
 
   try {
@@ -271,11 +298,16 @@ export async function generateDreamImageAction(dreamId: string): Promise<{
     return { error: "You've reached the regeneration limit for this dream." }
   }
 
+  const { allowed } = await checkRateLimit(supabase, user.id, 'image_generation')
+  if (!allowed) {
+    return { error: 'You’ve reached today’s image generation limit. It resets tomorrow.' }
+  }
+
   // Build a detailed, artistic, surreal prompt based on the dream.
   // Matches the "Artistic Night" aesthetic: dreamy, atmospheric, dark, moody, elegant.
   const basePrompt = [
     `A highly detailed, surreal and atmospheric night scene representing the dream titled "${dream.title || 'Untitled'}".`,
-    dream.content ? `The scene captures the essence of: ${dream.content}` : '',
+    dream.content ? `The scene captures the essence of: ${dream.content.slice(0, 1500)}` : '',
     `Style: dreamy, dark, moody, elegant, mysterious, ethereal, quiet and introspective, soft moonlight, deep shadows, intricate details, cinematic composition, high resolution, fine art photography, artistic night aesthetic, calm yet otherworldly.`
   ].filter(Boolean).join(' ');
 
