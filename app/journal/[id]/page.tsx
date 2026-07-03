@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import DreamForm from '@/components/DreamForm';
 import BottomNav from '@/components/BottomNav';
 import type { Dream } from '@/lib/dreams';
-import { loadDreams, saveDreams } from '@/lib/dreams';
+import type { DreamFormValues } from '@/components/DreamForm';
 import { parseDreamDate } from '@/lib/dream-utils';
 import { createClient } from '@/lib/supabase/client';
 import { generateDreamImageAction, updateDreamAction, deleteDreamAction } from '../new/actions';
@@ -15,7 +15,6 @@ export default function DreamDetail() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [dream, setDream] = useState<Dream | null>(null);
-  const [isDbDream, setIsDbDream] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [interpretError, setInterpretError] = useState<string | null>(null);
@@ -26,12 +25,11 @@ export default function DreamDetail() {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
 
-  // Load the specific dream - try Supabase first, fallback to localStorage
+  // Load the specific dream from Supabase
   useEffect(() => {
     const id = params.id;
     let cancelled = false;
     (async () => {
-      // Try Supabase (a missing id simply falls through to "not found")
       try {
         const supabase = createClient();
         const { data: dbDream, error } = await supabase
@@ -39,75 +37,37 @@ export default function DreamDetail() {
           .select('*')
           .eq('id', id)
           .single();
-        if (!error && dbDream && !cancelled) {
-          setDream(dbDream as Dream);
-          setIsDbDream(true);
-          return;
-        }
-      } catch (e) {
-        console.warn('Supabase load failed for detail, trying local', e);
-      }
-      if (cancelled) return;
-
-      // Fallback to local
-      try {
-        const all = loadDreams();
-        const found = all.find(d => d.id === id);
-        if (found) {
-          setDream(found);
-          setIsDbDream(false);
+        if (cancelled) return;
+        if (!error && dbDream) {
+          setDream(dbDream);
         } else {
           setNotFound(true);
         }
       } catch {
-        setNotFound(true);
+        if (!cancelled) setNotFound(true);
       }
     })();
     return () => { cancelled = true; };
   }, [params.id]);
 
-  function updateLocalDream(updated: Dream) {
-    setSaveError(null);
-    try {
-      const all = loadDreams();
-      const newAll = all.map(d => d.id === updated.id ? updated : d);
-      saveDreams(newAll);
-      setDream(updated);
-      setIsEditing(false);
-    } catch {
-      setSaveError('We couldn’t save the changes. Your edits are still here — please try again.');
-    }
-  }
-
-  async function handleSaveFromForm(data: Partial<Dream>) {
+  async function handleSaveFromForm(values: DreamFormValues) {
     if (!dream) return;
-    const updatedDream: Dream = {
-      ...dream,
-      ...data,
-    } as Dream;
-
-    if (!isDbDream) {
-      updateLocalDream(updatedDream);
-      return;
-    }
-
-    // DB-stored dream: persist through the server action
     setSaveError(null);
-    const isLucid = (data.lucidity ?? 0) >= 4;
+
     const result = await updateDreamAction(dream.id, {
-      title: updatedDream.title ?? null,
-      content: updatedDream.content,
-      mood: updatedDream.mood ?? null,
-      is_lucid: isLucid,
-      tags: updatedDream.tags ?? null,
-      dream_date: updatedDream.dream_date,
+      title: values.title,
+      content: values.content,
+      mood: values.mood,
+      is_lucid: values.is_lucid,
+      tags: values.tags,
+      dream_date: values.dream_date,
     });
 
     if (result.error) {
       setSaveError(result.error);
       return;
     }
-    setDream({ ...updatedDream, is_lucid: isLucid });
+    setDream({ ...dream, ...values });
     setIsEditing(false);
   }
 
@@ -116,26 +76,13 @@ export default function DreamDetail() {
     setDeleting(true);
     setSaveError(null);
 
-    if (isDbDream) {
-      const result = await deleteDreamAction(dream.id);
-      if (result.error) {
-        setSaveError(result.error);
-        setDeleting(false);
-        return;
-      }
-      router.push('/journal');
+    const result = await deleteDreamAction(dream.id);
+    if (result.error) {
+      setSaveError(result.error);
+      setDeleting(false);
       return;
     }
-
-    try {
-      const all = loadDreams();
-      const filtered = all.filter(d => d.id !== dream.id);
-      saveDreams(filtered);
-      router.push('/journal');
-    } catch {
-      setSaveError('We couldn’t remove the dream right now. Please try again.');
-      setDeleting(false);
-    }
+    router.push('/journal');
   }
 
   async function generateInterpretation() {
@@ -152,7 +99,7 @@ export default function DreamDetail() {
           title: dream.title,
           content: dream.content,
           mood: dream.mood,
-          lucidity: dream.lucidity,
+          is_lucid: dream.is_lucid,
         }),
       });
       const data = await res.json();
@@ -174,11 +121,6 @@ export default function DreamDetail() {
     const currentCount = dream.image_generation_count || 0;
     if (currentCount >= 2) {
       setImageError("You've reached the regeneration limit for this dream.");
-      return;
-    }
-
-    if (!isDbDream) {
-      setImageError('Image generation is only available for dreams saved to your account.');
       return;
     }
 
@@ -233,7 +175,6 @@ export default function DreamDetail() {
   const formattedDate = date.toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
   });
-  const isLucidDream = dream.is_lucid || (dream.lucidity ?? 0) >= 4;
 
   return (
     <div className="min-h-screen bg-midnight-900">
@@ -283,21 +224,11 @@ export default function DreamDetail() {
               </h1>
             </div>
 
-            {/* Meta row - refined (supports both local lucidity and DB is_lucid) */}
+            {/* Meta row - refined */}
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm mb-6 text-text-300">
-              {isLucidDream ? (
+              {dream.is_lucid && (
                 <span className="text-accent font-medium tracking-wider">LUCID</span>
-              ) : typeof dream.lucidity === 'number' ? (
-                <div className="flex items-center gap-2">
-                  <span>Lucidity</span>
-                  <div className="flex gap-px pl-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className={`w-1.5 h-1.5 mt-0.5 rounded-full ${i < (dream.lucidity ?? 0) ? 'bg-accent' : 'bg-midnight-400'}`} />
-                    ))}
-                  </div>
-                  <span className="text-text-400 tabular-nums">{dream.lucidity}/5</span>
-                </div>
-              ) : null}
+              )}
               {dream.mood && <div>Mood · <span className="text-text-100 capitalize">{dream.mood}</span></div>}
             </div>
 
@@ -436,7 +367,7 @@ export default function DreamDetail() {
             </div>
             <div className="card p-6 sm:p-8">
               <DreamForm
-                initialDream={{ ...dream, lucidity: dream.lucidity ?? (dream.is_lucid ? 5 : 3) }}
+                initialDream={dream}
                 onSave={handleSaveFromForm}
                 onCancel={() => setIsEditing(false)}
                 isEditing

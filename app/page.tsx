@@ -5,8 +5,9 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/client';
-import { fetchAllDreams } from '@/lib/dreams';
-import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate, parseDreamDate } from '@/lib/dream-utils';
+import { fetchDreams } from '@/lib/dreams';
+import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
+import { generatePoeticInsight, extractKeywords, getExcerpt, formatDreamDate } from '@/lib/dream-utils';
 import type { Dream } from '@/lib/dreams';
 
 type User = { email?: string } | null;
@@ -23,12 +24,10 @@ export default function Home() {
     const supabase = createClient();
 
     async function refreshDreams() {
-      const { dreams } = await fetchAllDreams();
+      await migrateLocalDreams();
+      const { dreams } = await fetchDreams(); // already newest-first
       if (!isMounted) return;
-      const sorted = [...dreams].sort(
-        (a, b) => parseDreamDate(b.dream_date).getTime() - parseDreamDate(a.dream_date).getTime()
-      );
-      setRecentDreams(sorted.slice(0, 3));
+      setRecentDreams(dreams.slice(0, 3));
       setInsight(generatePoeticInsight(dreams));
       setKeywords(extractKeywords(dreams, 6));
     }

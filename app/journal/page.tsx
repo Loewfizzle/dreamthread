@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DreamCard from '@/components/DreamCard';
 import type { Dream } from '@/lib/dreams';
-import { fetchAllDreams } from '@/lib/dreams';
+import { fetchDreams } from '@/lib/dreams';
+import { migrateLocalDreams } from '@/lib/migrate-local-dreams';
 import { parseDreamDate } from '@/lib/dream-utils';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
@@ -22,7 +23,7 @@ export default function Journal() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const router = useRouter();
 
-  // Load dreams from Supabase + localStorage (merged for compatibility)
+  // Load dreams from Supabase (after importing any legacy local entries)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -35,13 +36,14 @@ export default function Journal() {
         if (!cancelled) setUserEmail(session?.user?.email ?? null);
       } catch {}
 
-      const { dreams: combined, cloudError } = await fetchAllDreams();
+      await migrateLocalDreams();
+      const { dreams: loaded, error } = await fetchDreams();
       if (cancelled) return;
 
-      if (cloudError && combined.length === 0) {
-        setLoadError('We had trouble reaching your journal (cloud). Showing local dreams.');
+      if (error) {
+        setLoadError('We had trouble reaching your journal. Please try again.');
       }
-      setDreams(combined);
+      setDreams(loaded);
       setIsLoading(false);
     })();
     return () => { cancelled = true; };
@@ -63,7 +65,7 @@ export default function Journal() {
 
     // Filters
     if (activeFilter === 'lucid') {
-      result = result.filter(d => d.is_lucid || (d.lucidity ?? 0) >= 4);
+      result = result.filter(d => d.is_lucid);
     } else if (activeFilter === 'recent' && recentCutoff !== null) {
       result = result.filter(d => parseDreamDate(d.dream_date).getTime() >= recentCutoff);
     }

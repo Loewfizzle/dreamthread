@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'You must be signed in to request a reflection.' }, { status: 401 });
   }
 
-  const { title, content, mood, lucidity } = await req.json();
+  const { title, content, mood, is_lucid } = await req.json();
 
   if (!content || typeof content !== 'string') {
     return NextResponse.json({ error: 'Dream content is required.' }, { status: 400 });
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
 Dream title: ${title || 'Untitled'}
 Felt like: ${mood || 'unknown'}
-Lucidity: ${lucidity || 'unknown'}/5
+Lucid dream: ${is_lucid ? 'yes' : 'no'}
 
 Dream:
 ${content}

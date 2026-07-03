@@ -11,7 +11,7 @@ interface DreamCardProps {
 }
 
 export default function DreamCard({ dream, onClick }: DreamCardProps) {
-  const date = dream.dream_date ? parseDreamDate(dream.dream_date) : new Date();
+  const date = parseDreamDate(dream.dream_date);
   const formattedDate = date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -23,11 +23,6 @@ export default function DreamCard({ dream, onClick }: DreamCardProps) {
     ? content.slice(0, 137).trim() + '…'
     : content;
 
-  const isLucid = dream.is_lucid || (dream.lucidity ?? 0) >= 4;
-  const lucidity = typeof dream.lucidity === 'number'
-    ? Math.max(1, Math.min(5, dream.lucidity))
-    : null;
-
   return (
     <Link 
       href={`/journal/${dream.id}`} 
@@ -38,17 +33,12 @@ export default function DreamCard({ dream, onClick }: DreamCardProps) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11px] font-medium text-text-400 tracking-[0.5px] mb-1.5">
             {formattedDate}
-            {isLucid ? (
+            {dream.is_lucid && (
               <>
                 <span className="inline-block w-px h-2.5 bg-text-500/40" />
                 <span className="text-accent font-medium">LUCID</span>
               </>
-            ) : lucidity !== null ? (
-              <>
-                <span className="inline-block w-px h-2.5 bg-text-500/40" />
-                <span className="tabular-nums">{lucidity}/5</span>
-              </>
-            ) : null}
+            )}
           </div>
           <h3 className="font-semibold text-[18px] tracking-[-0.02em] text-text-50 leading-tight pr-1 line-clamp-2">
             {dream.title || 'Untitled dream'}

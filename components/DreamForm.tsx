@@ -3,9 +3,19 @@
 import React, { useState } from 'react';
 import type { Dream } from '@/lib/dreams';
 
+export interface DreamFormValues {
+  id?: string;
+  title: string | null;
+  content: string;
+  dream_date: string;
+  mood: string | null;
+  is_lucid: boolean;
+  tags: string[] | null;
+}
+
 interface DreamFormProps {
   initialDream?: Partial<Dream>;
-  onSave: (dream: Omit<Dream, 'id'> & { id?: string }) => void;
+  onSave: (values: DreamFormValues) => void;
   onCancel: () => void;
   isEditing?: boolean;
 }
@@ -15,9 +25,11 @@ const MOODS = ['Peaceful', 'Curious', 'Joyful', 'Melancholy', 'Anxious', 'Vivid'
 export default function DreamForm({ initialDream, onSave, onCancel, isEditing = false }: DreamFormProps) {
   const [title, setTitle] = useState(initialDream?.title || '');
   const [content, setContent] = useState(initialDream?.content || '');
-  const [dreamDate, setDreamDate] = useState(initialDream?.dream_date || new Date().toISOString().split('T')[0]);
+  const [dreamDate, setDreamDate] = useState(
+    (initialDream?.dream_date || new Date().toISOString()).split('T')[0]
+  );
   const [mood, setMood] = useState(initialDream?.mood || '');
-  const [lucidity, setLucidity] = useState(initialDream?.lucidity || 3);
+  const [isLucid, setIsLucid] = useState(initialDream?.is_lucid ?? false);
   const [tags, setTags] = useState<string[]>(initialDream?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -50,14 +62,14 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
 
     setSaving(true);
 
-    const dreamData = {
+    const dreamData: DreamFormValues = {
       id: initialDream?.id,
-      title: title.trim() || 'Untitled dream',
+      title: title.trim() || null,
       content: content.trim(),
       dream_date: dreamDate,
-      mood: mood || undefined,
-      lucidity,
-      tags: tags.length > 0 ? tags : undefined,
+      mood: mood.trim() || null,
+      is_lucid: isLucid,
+      tags: tags.length > 0 ? tags : null,
     };
 
     // Small artificial delay for calm feel
@@ -111,25 +123,23 @@ export default function DreamForm({ initialDream, onSave, onCancel, isEditing = 
         />
       </div>
 
-      {/* Lucidity - artistic control, large taps */}
-      <div>
-        <label className="label mb-3">How lucid was it?</label>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setLucidity(level)}
-              className={`flex-1 py-3.5 rounded-3xl text-sm font-medium border active:scale-[0.985] transition-all touch-target ${lucidity === level 
-                ? 'bg-accent border-accent text-white' 
-                : 'bg-midnight-700 border-midnight-400 text-text-200 hover:bg-midnight-600'}`}
-            >
-              {level}
-              <div className="text-[9px] tracking-widest opacity-70 mt-px">{level === 5 ? 'FULL' : level === 1 ? 'FAINT' : ''}</div>
-            </button>
-          ))}
+      {/* Lucid dream toggle - matches the create form */}
+      <div className="flex items-start gap-3 rounded-2xl border border-midnight-400 bg-midnight-700/40 p-4">
+        <input
+          id="edit-is-lucid"
+          type="checkbox"
+          checked={isLucid}
+          onChange={(e) => setIsLucid(e.target.checked)}
+          className="mt-1 h-4 w-4 rounded accent-accent"
+        />
+        <div>
+          <label htmlFor="edit-is-lucid" className="text-sm font-medium text-text-100">
+            This was a lucid dream
+          </label>
+          <p className="text-xs text-text-400">
+            You were aware that you were dreaming while it was happening.
+          </p>
         </div>
-        <p className="text-xs text-text-400 mt-2 px-1">1 = barely remembered &nbsp;·&nbsp; 5 = fully aware and in control</p>
       </div>
 
       {/* Mood chips */}
